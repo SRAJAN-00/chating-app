@@ -8,9 +8,11 @@ import {
   SignUpSchema,
 } from "@repo/common/types";
 import { prisma } from "@repo/db/client";
+import cors from "cors";
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 app.post("/api/v1/signup", async (req, res) => {
   const parsedData = SignUpSchema.safeParse(req.body);
