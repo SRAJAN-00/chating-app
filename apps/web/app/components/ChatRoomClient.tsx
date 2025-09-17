@@ -71,10 +71,10 @@ export function ChatRoomClient({
   return (
     <div className="flex flex-col h-[90vh] max-w-2xl mx-auto bg-neutral-50  p-4 ">
       {/* Chat messages */}
-      <h1 className="bg-neutral-700 text-white text-lg font-bold p-2 rounded-t-md mb-2">
+      <h1 className="bg-neutral-700 text-neutral-50 text-lg font-bold p-2 rounded-t-md mb-2">
         Chat{" "}
       </h1>
-      <div className="flex-1 overflow-y-auto flex flex-col gap-2">
+      <div className="flex-1 overflow-y-auto flex flex-col ">
         {chats.map((m, idx) => (
           <div
             key={idx}
