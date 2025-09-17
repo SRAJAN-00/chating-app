@@ -93,14 +93,17 @@ app.post("/api/v1/room", middleware, async (req, res) => {
     return;
   }
   const userId = req.userId;
-
-  const room = await prisma.room.create({
-    data: {
-      slug: parsedData.data.name,
-      adminId: String(userId),
-    },
-  });
-  res.json({ message: "room successfully created", roomId: room.id });
+  try {
+    const room = await prisma.room.create({
+      data: {
+        slug: parsedData.data.name,
+        adminId: String(userId),
+      },
+    });
+    res.json({ message: "room successfully created", roomId: room.id });
+  } catch (e) {
+    console.log(e);
+  }
 });
 
 app.get("/api/v1/chat/:roomId", async (req, res) => {
@@ -113,6 +116,20 @@ app.get("/api/v1/chat/:roomId", async (req, res) => {
     take: 100,
   });
   res.json({ messages });
+});
+app.get("/api/v1/room/:slug", async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const room = await prisma.room.findFirst({
+      where: {
+        slug,
+      },
+    });
+    res.json({ room });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Error fetching room" });
+  }
 });
 
 app.listen(3001);
