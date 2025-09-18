@@ -51,8 +51,8 @@ wss.on("connection", async function connection(ws, request) {
   console.log("User connected: ", userId);
 
   // Add user to users array
-  users.push({ ws, userId, rooms: [] });
 
+  // Example WebSocket message handler
   ws.on("message", async function message(data) {
     try {
       const parsedData = JSON.parse(data.toString());
@@ -72,6 +72,8 @@ wss.on("connection", async function connection(ws, request) {
         case "chat":
           const roomId = parsedData.roomId;
           const message = parsedData.message;
+          const senderId = user.userId; // The sender is the connected user
+
           users.forEach((user) => {
             if (user.rooms.includes(roomId)) {
               user.ws.send(
@@ -79,7 +81,21 @@ wss.on("connection", async function connection(ws, request) {
                   type: "chat",
                   message: message,
                   roomId,
-                  userId,
+                  userId: senderId, // Always use the sender's userId
+                })
+              );
+            }
+          });
+          const active_count = users.filter((user) =>
+            user.rooms.includes(roomId)
+          ).length;
+          users.forEach((user) => {
+            if (user.rooms.includes(roomId)) {
+              user.ws.send(
+                JSON.stringify({
+                  type: "active_count",
+                  roomId,
+                  activeCount: active_count,
                 })
               );
             }
@@ -88,7 +104,7 @@ wss.on("connection", async function connection(ws, request) {
           await prisma.chat.create({
             data: {
               roomId,
-              userId,
+              userId: senderId,
               message,
             },
           });

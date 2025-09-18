@@ -6,9 +6,9 @@ export function useSocket() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(
-      `${WS_URL}?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYzk3ODY5OS02MjgxLTQzMmMtOGFlOS1hMjkwNTY4ZGY0NzYiLCJpYXQiOjE3NTgwMjA4Njl9.Z1o-Vecz2JRFufvQ1UN7cs_YOkmiv8Z8SxIBjQpKdrM`
-    );
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") || "" : "";
+    const ws = new WebSocket(`${WS_URL}?token=${token}`);
     ws.onopen = () => {
       setLoading(false);
       setSocket(ws);
@@ -17,5 +17,6 @@ export function useSocket() {
       ws.close();
     };
   }, []);
+
   return { socket, loading };
 }

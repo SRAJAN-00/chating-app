@@ -5,7 +5,7 @@ import { useSocket } from "../hooks/useSocket";
 
 type ChatMessage = {
   message: string;
-  sender: "me" | "other";
+  sender: string; // should be userId
 };
 
 export function ChatRoomClient({
@@ -18,8 +18,17 @@ export function ChatRoomClient({
   const [chats, setChats] = useState<ChatMessage[]>(messages);
   const { socket, loading } = useSocket();
   const [current, setCurrent] = useState("");
+  const [activeCount, setActiveCount] = useState(1); // Track active users
   const [lastSent, setLastSent] = useState(""); // Track last sent message
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Get current user ID from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentUserId(localStorage.getItem("userId") ?? "");
+    }
+  }, []);
 
   // Auto-scroll to bottom whenever chats change
   useEffect(() => {
@@ -44,8 +53,15 @@ export function ChatRoomClient({
       if (parsed.type === "chat" && parsed.message) {
         // Ignore message if it's identical to the last one we sent
         if (parsed.message === lastSent) return;
+        if (parsed.type === "active_count" && parsed.activeCount) {
+          setActiveCount(parsed.activeCount);
+          console.log("Active users:", parsed.activeCount);
+        }
 
-        setChats((c) => [...c, { message: parsed.message, sender: "other" }]);
+        setChats((c) => [
+          ...c,
+          { message: parsed.message, sender: parsed.userId }, // use userId from backend!
+        ]);
       }
     };
   }, [socket, loading, id, lastSent]);
@@ -59,11 +75,12 @@ export function ChatRoomClient({
         type: "chat",
         roomId: id,
         message: current,
+        sender: currentUserId, // send actual userId!
       })
     );
 
     // Add locally as 'me'
-    setChats((c) => [...c, { message: current, sender: "me" }]);
+    setChats((c) => [...c, { message: current, sender: currentUserId ?? "" }]);
     setLastSent(current); // Track last sent message
     setCurrent("");
   };
@@ -71,15 +88,18 @@ export function ChatRoomClient({
   return (
     <div className="flex flex-col h-[90vh] max-w-2xl mx-auto bg-neutral-50  p-4 ">
       {/* Chat messages */}
-      <h1 className="bg-neutral-700 text-neutral-50 text-lg font-bold p-2 rounded-t-md mb-2">
-        Chat{" "}
+      <h1 className="bg-neutral-700 text-neutral-50 text-lg font-bold p-2 rounded-t-md mb-2 flex items-center justify-between">
+        Chat
+        <span className="text-sm font-normal bg-blue-100 text-blue-700 px-2 py-1 rounded">
+          Active users: {activeCount}
+        </span>
       </h1>
       <div className="flex-1 overflow-y-auto flex flex-col ">
         {chats.map((m, idx) => (
           <div
             key={idx}
             className={`px-4 py-2 rounded-lg max-w-[70%] break-words ${
-              m.sender === "me"
+              m.sender === currentUserId
                 ? "self-end bg-blue-500 text-white shadow-inner shadow-black/20"
                 : "self-start bg-gray-200 text-gray-900 shadow-md"
             }`}

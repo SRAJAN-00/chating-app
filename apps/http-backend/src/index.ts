@@ -42,7 +42,7 @@ app.post("/api/v1/signup", async (req, res) => {
     // Here you would normally add code to save the user to your database
     return res
       .status(201)
-      .json({ message: "User created successfully", token });
+      .json({ message: "User created successfully", token, userId });
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Error creating user" });

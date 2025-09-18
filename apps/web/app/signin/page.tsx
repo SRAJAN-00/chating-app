@@ -17,8 +17,9 @@ export default function SignIn() {
         username,
         password,
       });
-      console.log(response.data);
+      console.log(response.data.userId);
       localStorage.setItem("token", response.data.token);
+      localStorage.setItem("userId", response.data.userId); // <-- Add this line!
 
       if (response.status === 201) {
         router.push("/joinroom");
