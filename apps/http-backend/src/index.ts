@@ -133,5 +133,19 @@ app.get("/api/v1/room/:slug", async (req, res) => {
     res.status(500).json({ message: "Error fetching room" });
   }
 });
-
+app.get("/api/v1/users", async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching users" });
+  }
+});
 app.listen(3001);
