@@ -103,9 +103,35 @@ wss.on("connection", async function connection(ws, request) {
 
           await prisma.chat.create({
             data: {
-              roomId,
+              roomId, // <-- use roomId, not roomI
               userId: senderId,
               message,
+            },
+          });
+          break;
+        case "stroke":
+          const strokeRoomId = parsedData.roomId;
+          const strokeData = parsedData.data;
+          users.forEach((user) => {
+            if (user.rooms.includes(strokeRoomId)) {
+              user.ws.send(
+                JSON.stringify({
+                  type: "stroke",
+                  data: strokeData,
+                  roomId: strokeRoomId,
+                  userId: senderId,
+                })
+              );
+            }
+          });
+          await prisma.stroke.create({
+            data: {
+              roomId: strokeRoomId,
+              userId,
+              x: strokeData.x,
+              y: strokeData.y,
+              color: strokeData.color,
+              size: strokeData.size,
             },
           });
           break;
@@ -113,5 +139,11 @@ wss.on("connection", async function connection(ws, request) {
     } catch (err) {
       console.log("Error parsing message: ", err);
     }
+  });
+
+  ws.on("close", () => {
+    const idx = users.findIndex((u) => u.ws === ws);
+    if (idx !== -1) users.splice(idx, 1);
+    console.log("User disconnected");
   });
 });

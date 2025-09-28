@@ -47,3 +47,15 @@ model Chat{
   room Room @relation(fields: [roomId], references: [id])
   user User @relation(fields: [userId], references: [id])
 }
+
+model Stroke {
+  id        String   @id @default(uuid())
+  roomId    String
+  userId    String
+  x         Float
+  y         Float
+  color     String
+  size      Int
+  createdAt DateTime @default(now())
+}
+
