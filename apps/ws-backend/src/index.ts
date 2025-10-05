@@ -4,72 +4,90 @@ import { JWT_SECRET } from "@repo/backend-common/config";
 import { prisma } from "@repo/db/client";
 
 const wss = new WebSocketServer({ port: 8080 });
-console.log("WebSocket server running on port 8080");
 
 type User = {
   ws: WebSocket;
   userId: string;
   rooms: string[];
-  connectionId: string;
 };
 const users: User[] = [];
 
 wss.on("connection", async function connection(ws, request) {
   function checkUserAuth(token: string): string | null {
     try {
+      console.log("🔐 Verifying token...");
       const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
       if (!decoded || typeof decoded.userId !== "string") {
+        console.log("❌ Invalid token payload:", decoded);
         return null;
       }
+      console.log("✅ Token verified for user:", decoded.userId);
       return decoded.userId;
     } catch (err) {
+      console.log("❌ JWT Error:", err instanceof Error ? err.message : String(err));
       return null;
     }
   }
 
   const url = request.url;
+  console.log("🔗 WebSocket connection attempt, URL:", url);
+  
   if (!url) {
+    console.log("❌ No URL provided");
     ws.close();
     return;
   }
+  
   const queryParams = new URLSearchParams(url.split("?")[1]);
   const token = queryParams.get("token");
+  
+  console.log("🎫 Received token:", token ? `${token.slice(0, 10)}...${token.slice(-10)}` : "null");
 
   if (!token) {
+    console.log("❌ No token provided");
     ws.close();
     return;
   }
+  
   const userId = checkUserAuth(token);
   if (!userId) {
+    console.log("❌ Invalid token, closing connection");
     ws.close();
     return null;
   }
-  const connectionId = Date.now().toString() + Math.random().toString(36);
   users.push({
     userId,
     rooms: [],
     ws,
-    connectionId,
   });
-  console.log(`User ${userId} connected. Total users: ${users.length}`);
+  console.log("User connected: ", userId);
 
   // Add user to users array
 
   // Example WebSocket message handler
   ws.on("message", async function message(data) {
+    console.log("🔥 RAW MESSAGE RECEIVED:", data.toString());
     try {
       const parsedData = JSON.parse(data.toString());
+      console.log("📨 PARSED MESSAGE:", parsedData);
       const user = users.find((x) => x.ws === ws);
-      if (!user) return;
+      if (!user) {
+        console.log("❌ USER NOT FOUND");
+        return;
+      }
       const senderId = user.userId; // Move outside switch to avoid duplication
+      console.log("👤 SENDER ID:", senderId);
 
       switch (parsedData.type) {
         case "join_room":
           if (!user.rooms.includes(parsedData.roomId)) {
             user.rooms.push(parsedData.roomId);
-            const usersInRoom = users.filter(u => u.rooms.includes(parsedData.roomId));
-            console.log(`User ${senderId} joined room ${parsedData.roomId}. Users in room: ${usersInRoom.length}`);
           }
+          
+          // Count users in this room
+          const usersInRoom = users.filter(u => u.rooms.includes(parsedData.roomId));
+          console.log(`🏠 Room ${parsedData.roomId} now has ${usersInRoom.length} users:`, 
+                     usersInRoom.map(u => u.userId));
           break;
         case "leave_room":
           user.rooms = user.rooms.filter(
@@ -109,7 +127,7 @@ wss.on("connection", async function connection(ws, request) {
 
           await prisma.chat.create({
             data: {
-              roomId, // <-- use roomId, not roomI
+              roomId: parseInt(roomId),
               userId: senderId,
               message,
             },
@@ -118,47 +136,64 @@ wss.on("connection", async function connection(ws, request) {
         case "stroke":
           const strokeRoomId = parsedData.roomId;
           const strokeData = parsedData.data;
-          const senderConnectionId = user.connectionId;
-
-          const recipients = users.filter(u => u.rooms.includes(strokeRoomId) && u.connectionId !== senderConnectionId);
-          console.log(`Broadcasting stroke from ${senderId} to ${recipients.length} users in room ${strokeRoomId}`);
-
-          recipients.forEach((targetUser) => {
-            targetUser.ws.send(
-              JSON.stringify({
-                type: "stroke",
-                data: strokeData,
-                roomId: strokeRoomId,
-                userId: senderId,
-              })
-            );
+          
+          console.log("📝 Stroke received:", {
+            roomId: strokeRoomId,
+            tool: strokeData.tool,
+            x: strokeData.x,
+            y: strokeData.y,
+            endX: strokeData.endX,
+            endY: strokeData.endY,
+            senderId
           });
 
+          const recipientUsers = users.filter(user => 
+            user.rooms.includes(strokeRoomId) && user.userId !== senderId
+          );
+          
+          console.log(`📤 Broadcasting stroke to ${recipientUsers.length} users in room ${strokeRoomId}`);
+          
+          users.forEach((user) => {
+            if (user.rooms.includes(strokeRoomId) && user.userId !== senderId) {
+              console.log("📤 Broadcasting stroke to user:", user.userId);
+              user.ws.send(
+                JSON.stringify({
+                  type: "stroke",
+                  data: strokeData,
+                  roomId: strokeRoomId,
+                  userId: senderId,
+                })
+              );
+            }
+          });
+
+          const strokeToSave = {
+            roomId: parseInt(strokeRoomId),
+            userId: senderId,
+            x: strokeData.x,
+            y: strokeData.y,
+            color: strokeData.color,
+            size: strokeData.size,
+            endX: strokeData.endX || null,
+            endY: strokeData.endY || null,
+            tool: strokeData.tool || "pen",
+          };
+          
+          console.log("💾 Saving stroke to DB:", strokeToSave);
+          
           await prisma.stroke.create({
-            data: {
-              roomId: strokeRoomId,
-              userId: senderId, // ✅ Use senderId instead of userId
-              x: strokeData.x,
-              y: strokeData.y,
-              color: strokeData.color,
-              size: strokeData.size,
-            },
+            data: strokeToSave,
           });
           break;
       }
     } catch (err) {
-      // ignore
+      console.log("Error parsing message: ", err);
     }
   });
 
   ws.on("close", () => {
     const idx = users.findIndex((u) => u.ws === ws);
-    if (idx !== -1) {
-      const user = users[idx];
-      if (user) {
-        console.log(`User ${user.userId} disconnected. Total users: ${users.length - 1}`);
-      }
-      users.splice(idx, 1);
-    }
+    if (idx !== -1) users.splice(idx, 1);
+    console.log("User disconnected");
   });
 });

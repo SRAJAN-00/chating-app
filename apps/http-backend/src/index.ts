@@ -155,8 +155,12 @@ app.get("/api/v1/stroke/:roomId", async (req, res) => {
     if (!roomId) {
       return res.status(400).json({ message: "Missing roomId parameter" });
     }
+    const numericRoomId = Number(roomId);
+    if (isNaN(numericRoomId)) {
+      return res.status(400).json({ message: "Invalid roomId parameter" });
+    }
     const strokes = await prisma.stroke.findMany({
-      where: { roomId },
+      where: { roomId: numericRoomId },
       orderBy: { createdAt: "asc" },
     });
     res.json({ strokes });

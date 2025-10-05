@@ -55,6 +55,9 @@ model Stroke {
   userId    String
   x         Float
   y         Float
+  endX      Float?
+  endY      Float?
+  tool      String?
   color     String
   size      Int
   createdAt DateTime @default(now())
