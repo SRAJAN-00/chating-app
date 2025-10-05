@@ -4,11 +4,13 @@ import { JWT_SECRET } from "@repo/backend-common/config";
 import { prisma } from "@repo/db/client";
 
 const wss = new WebSocketServer({ port: 8080 });
+console.log("WebSocket server running on port 8080");
 
 type User = {
   ws: WebSocket;
   userId: string;
   rooms: string[];
+  connectionId: string;
 };
 const users: User[] = [];
 
@@ -21,7 +23,6 @@ wss.on("connection", async function connection(ws, request) {
       }
       return decoded.userId;
     } catch (err) {
-      console.log(err);
       return null;
     }
   }
@@ -43,12 +44,14 @@ wss.on("connection", async function connection(ws, request) {
     ws.close();
     return null;
   }
+  const connectionId = Date.now().toString() + Math.random().toString(36);
   users.push({
     userId,
     rooms: [],
     ws,
+    connectionId,
   });
-  console.log("User connected: ", userId);
+  console.log(`User ${userId} connected. Total users: ${users.length}`);
 
   // Add user to users array
 
@@ -58,10 +61,14 @@ wss.on("connection", async function connection(ws, request) {
       const parsedData = JSON.parse(data.toString());
       const user = users.find((x) => x.ws === ws);
       if (!user) return;
+      const senderId = user.userId; // Move outside switch to avoid duplication
+
       switch (parsedData.type) {
         case "join_room":
           if (!user.rooms.includes(parsedData.roomId)) {
             user.rooms.push(parsedData.roomId);
+            const usersInRoom = users.filter(u => u.rooms.includes(parsedData.roomId));
+            console.log(`User ${senderId} joined room ${parsedData.roomId}. Users in room: ${usersInRoom.length}`);
           }
           break;
         case "leave_room":
@@ -72,7 +79,6 @@ wss.on("connection", async function connection(ws, request) {
         case "chat":
           const roomId = parsedData.roomId;
           const message = parsedData.message;
-          const senderId = user.userId; // The sender is the connected user
 
           users.forEach((user) => {
             if (user.rooms.includes(roomId)) {
@@ -112,22 +118,26 @@ wss.on("connection", async function connection(ws, request) {
         case "stroke":
           const strokeRoomId = parsedData.roomId;
           const strokeData = parsedData.data;
-          users.forEach((user) => {
-            if (user.rooms.includes(strokeRoomId)) {
-              user.ws.send(
-                JSON.stringify({
-                  type: "stroke",
-                  data: strokeData,
-                  roomId: strokeRoomId,
-                  userId: senderId,
-                })
-              );
-            }
+          const senderConnectionId = user.connectionId;
+
+          const recipients = users.filter(u => u.rooms.includes(strokeRoomId) && u.connectionId !== senderConnectionId);
+          console.log(`Broadcasting stroke from ${senderId} to ${recipients.length} users in room ${strokeRoomId}`);
+
+          recipients.forEach((targetUser) => {
+            targetUser.ws.send(
+              JSON.stringify({
+                type: "stroke",
+                data: strokeData,
+                roomId: strokeRoomId,
+                userId: senderId,
+              })
+            );
           });
+
           await prisma.stroke.create({
             data: {
               roomId: strokeRoomId,
-              userId,
+              userId: senderId, // ✅ Use senderId instead of userId
               x: strokeData.x,
               y: strokeData.y,
               color: strokeData.color,
@@ -137,13 +147,18 @@ wss.on("connection", async function connection(ws, request) {
           break;
       }
     } catch (err) {
-      console.log("Error parsing message: ", err);
+      // ignore
     }
   });
 
   ws.on("close", () => {
     const idx = users.findIndex((u) => u.ws === ws);
-    if (idx !== -1) users.splice(idx, 1);
-    console.log("User disconnected");
+    if (idx !== -1) {
+      const user = users[idx];
+      if (user) {
+        console.log(`User ${user.userId} disconnected. Total users: ${users.length - 1}`);
+      }
+      users.splice(idx, 1);
+    }
   });
 });

@@ -23,7 +23,7 @@ export default async function ChatRoom1({
 
   return (
     <div className="flex min-h-screen items-center justify-center ">
-      <div className="w-full max-w-2xl rounded-2xl    p-6">
+      <div className="w-full max-w-2xl rounded-2xl p-6">
         <ChatRoom id={roomId} />
       </div>
     </div>

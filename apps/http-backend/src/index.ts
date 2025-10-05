@@ -148,52 +148,6 @@ app.get("/api/v1/users", async (req, res) => {
     res.status(500).json({ message: "Error fetching users" });
   }
 });
-app.post("/api/v1/draw", async (req, res) => {
-  try {
-    const { x, y, size, color, roomId, userId } = req.body; } = req.body;
-    if (
-      x === undefined || x === undefined ||
-      y === undefined ||ed ||
-      !size ||   !size ||
-      !color ||
-      !roomId ||
-      !userId
-    ) {
-      return res.status(400).json({ message: "Missing required stroke fields" });{ message: "Missing required stroke fields" });
-    }
-    const stroke = await prisma.stroke.create({ prisma.stroke.create({
-      data: { roomId, userId, x, y, size, color },   data: { roomId, userId, x, y, size, color },
-    });
-    res.json(stroke);    res.json(stroke);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-app.listen(3001);});  }    res.status(500).json({ message: "Error fetching strokes" });    console.error("Error fetching strokes:", err);  } catch (err) {    res.json({ strokes });    });      orderBy: { createdAt: "asc" },      where: { roomId },    const strokes = await prisma.stroke.findMany({    }      return res.status(400).json({ message: "Missing roomId parameter" });    if (!roomId) {    const { roomId } = req.params;  try {app.get("/api/v1/stroke/:roomId", async (req, res) => {});  }    res.status(500).json({ message: "Error creating stroke" });    console.error("Error creating stroke:", err);  } catch (err) {  } catch (err) {
-    console.error("Error creating stroke:", err);
-    res.status(500).json({ message: "Error creating stroke" });
-  }
-});
 
 app.get("/api/v1/stroke/:roomId", async (req, res) => {
   try {

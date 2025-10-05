@@ -1,32 +1,64 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Drawingboard from "./Drawingboard";
-import { WS_URL } from "../../../config";
+import { WS_URL, BACKEND_URL } from "../../../config";
+import axios from "axios";
 
-const HARDCODED_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjYzk3ODY5OS02MjgxLTQzMmMtOGFlOS1hMjkwNTY4ZGY0NzYiLCJpYXQiOjE3NTgwMjA4Njl9.Z1o-Vecz2JRFufvQ1UN7cs_YOkmiv8Z8SxIBjQpKdrM";
-
-export default function Collabrative() {
+export default function Collabrative({ roomId }: { roomId: string }) {
   const [size, setSize] = useState(3);
   const [stroke, setStroke] = useState<any[]>([]);
   const [color, setColor] = useState("red");
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(`${WS_URL}?token=${HARDCODED_TOKEN}`);
-    setSocket(ws);
-
-    ws.onmessage = (event) => {
-      const receivedStroke = JSON.parse(event.data);
-      setStroke((prev) => [...prev, receivedStroke]);
+    const fetchExistingStrokes = async () => {
+      try {
+        const response = await axios.get(`${BACKEND_URL}/stroke/${roomId}`);
+        const existingStrokes = response.data.strokes || [];
+        setStroke(existingStrokes);
+      } catch (error) {
+        // ignore
+      }
     };
 
-    return () => ws.close();
-  }, []);
+    fetchExistingStrokes();
+  }, [roomId]);
 
-  const handleDraw = (newStroke: any) => {
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") || "" : "";
+
+    const ws = new WebSocket(`${WS_URL}?token=${token}`);
+    socketRef.current = ws;
+
+    ws.onopen = () => {
+      const joinMessage = { type: "join_room", roomId };
+      ws.send(JSON.stringify(joinMessage));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "stroke") {
+        setStroke((prev) => [...prev, data.data]);
+      }
+    };
+
+    ws.onerror = () => {};
+    ws.onclose = () => {};
+
+    return () => ws.close();
+  }, [roomId]);  const handleDraw = (newStroke: any) => {
     setStroke((prev) => [...prev, newStroke]);
-    socket?.send(JSON.stringify(newStroke));
+
+    const socket = socketRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      const message = {
+        type: "stroke",
+        roomId,
+        data: newStroke,
+      };
+      socket.send(JSON.stringify(message));
+    }
   };
 
   return (

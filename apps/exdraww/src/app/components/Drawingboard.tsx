@@ -39,15 +39,39 @@ export default function Drawingboard({
   useEffect(() => {
     const cxt = ctxRef.current;
     if (!cxt) return;
+
     cxt.clearRect(0, 0, cxt.canvas.width, cxt.canvas.height);
-    stroke.forEach((strokes) => {
+
+    stroke.forEach((strokePoint, index) => {
       cxt.beginPath();
-      cxt.lineWidth = strokes.size;
-      cxt.strokeStyle = strokes.color;
-      cxt.lineTo(strokes.x, strokes.y);
-      cxt.stroke();
-      cxt.beginPath();
-      cxt.moveTo(strokes.x, strokes.y);
+      cxt.arc(
+        strokePoint.x,
+        strokePoint.y,
+        strokePoint.size / 2,
+        0,
+        2 * Math.PI
+      );
+      cxt.fillStyle = strokePoint.color;
+      cxt.fill();
+      
+      if (index > 0) {
+        const prevStroke = stroke[index - 1];
+        const distance = Math.sqrt(
+          Math.pow(strokePoint.x - prevStroke.x, 2) + 
+          Math.pow(strokePoint.y - prevStroke.y, 2)
+        );
+        
+        if (distance < 100 && 
+            prevStroke.color === strokePoint.color && 
+            prevStroke.size === strokePoint.size) {
+          cxt.beginPath();
+          cxt.lineWidth = strokePoint.size;
+          cxt.strokeStyle = strokePoint.color;
+          cxt.moveTo(prevStroke.x, prevStroke.y);
+          cxt.lineTo(strokePoint.x, strokePoint.y);
+          cxt.stroke();
+        }
+      }
     });
   }, [stroke]);
 
@@ -57,21 +81,39 @@ export default function Drawingboard({
   };
   const handleMouseDown = (e: React.MouseEvent) => {
     drawing.current = true;
-    ctxRef.current?.beginPath();
-    ctxRef.current?.moveTo(e.clientX, e.clientY);
+    const rect = canvsRef.current?.getBoundingClientRect();
+    if (rect && ctxRef.current) {
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      ctxRef.current.beginPath();
+      ctxRef.current.moveTo(x, y);
+    }
   };
+
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!drawing.current || !ctxRef.current) return;
-    const strokes: Stroke = { x: e.clientX, y: e.clientY, color, size };
-    onDraw(strokes);
+    if (!drawing.current || !ctxRef.current || !canvsRef.current) return;
+
+    const rect = canvsRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const strokeData: Stroke = { x, y, color, size };
+    onDraw(strokeData);
   };
 
   return (
     <canvas
       ref={canvsRef}
-      style={{ display: "block", width: "100vw", height: "100vh" }}
+      width={800}
+      height={600}
+      style={{
+        border: "1px solid #ccc",
+        background: "#fff",
+        cursor: "crosshair",
+      }}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
       onMouseMove={handleMouseMove}
     />
   );
