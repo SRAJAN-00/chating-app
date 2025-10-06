@@ -6,15 +6,41 @@ type DrawingData = {
   y: number;
   color: string;
   size: number;
-  endX?: number; // Optional - only for shapes
-  endY?: number; // Optional - only for shapes
-  tool?: string; // Optional - pen, rectangle, etc.
+  endX?: number;
+  endY?: number;
+  tool?: string;
 };
+
 export const useRenderAllStrokes = (
   stroke: DrawingData[],
   ctxRef: React.RefObject<CanvasRenderingContext2D | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>
 ) => {
+  // ✅ Add the drawArrowhead function here
+  const drawArrowhead = (
+    ctx: CanvasRenderingContext2D,
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number,
+    arrowSize: number
+  ) => {
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(
+      toX - arrowSize * Math.cos(angle - Math.PI / 6),
+      toY - arrowSize * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(
+      toX - arrowSize * Math.cos(angle + Math.PI / 6),
+      toY - arrowSize * Math.sin(angle + Math.PI / 6)
+    );
+    ctx.stroke();
+  };
+
   const renderStrokes = useCallback(() => {
     const cxt = ctxRef.current;
     const canvas = canvasRef.current;
@@ -33,16 +59,42 @@ export const useRenderAllStrokes = (
         const height = (strokePoint.endY || strokePoint.y) - strokePoint.y;
 
         cxt.strokeRect(strokePoint.x, strokePoint.y, width, height);
+      } else if (strokePoint.tool === "circle") {
+        cxt.beginPath();
+        cxt.lineWidth = strokePoint.size;
+        cxt.strokeStyle = strokePoint.color;
+        const radius = Math.sqrt(
+          Math.pow((strokePoint.endX || strokePoint.x) - strokePoint.x, 2) +
+            Math.pow((strokePoint.endY || strokePoint.y) - strokePoint.y, 2)
+        );
+        cxt.arc(strokePoint.x, strokePoint.y, radius, 0, 2 * Math.PI);
+        cxt.stroke();
+      } else if (strokePoint.tool === "arrow") {
+        cxt.beginPath();
+        cxt.lineWidth = strokePoint.size;
+        cxt.strokeStyle = strokePoint.color;
+
+        // Draw line
+        cxt.moveTo(strokePoint.x, strokePoint.y);
+        cxt.lineTo(
+          strokePoint.endX || strokePoint.x,
+          strokePoint.endY || strokePoint.y
+        );
+        cxt.stroke();
+
+        // ✅ Now call the drawArrowhead function
+        drawArrowhead(
+          cxt,
+          strokePoint.x,
+          strokePoint.y,
+          strokePoint.endX || strokePoint.x,
+          strokePoint.endY || strokePoint.y,
+          strokePoint.size * 3
+        );
       } else {
         // ✅ Existing pen rendering logic
         cxt.beginPath();
-        cxt.arc(
-          strokePoint.x,
-          strokePoint.y,
-          strokePoint.size / 2,
-          0,
-          2 * Math.PI
-        );
+        cxt.arc(strokePoint.x, strokePoint.y, strokePoint.size, 0, 2 * Math.PI);
         cxt.fillStyle = strokePoint.color;
         cxt.fill();
 
@@ -57,7 +109,9 @@ export const useRenderAllStrokes = (
             distance < 100 &&
             prevStroke.color === strokePoint.color &&
             prevStroke.size === strokePoint.size &&
-            prevStroke.tool !== "rectangle" // ✅ Don't connect to rectangles
+            prevStroke.tool !== "rectangle" &&
+            prevStroke.tool !== "circle" && // ✅ Don't connect to rectangles
+            prevStroke.tool !== "arrow" // ✅ Add this
           ) {
             cxt.beginPath();
             cxt.lineWidth = strokePoint.size;

@@ -152,17 +152,23 @@ app.get("/api/v1/users", async (req, res) => {
 app.get("/api/v1/stroke/:roomId", async (req, res) => {
   try {
     const { roomId } = req.params;
+    console.log("🔍 GET /stroke request for roomId:", roomId);
+    
     if (!roomId) {
       return res.status(400).json({ message: "Missing roomId parameter" });
     }
     const numericRoomId = Number(roomId);
     if (isNaN(numericRoomId)) {
+      console.log("❌ Invalid roomId:", roomId);
       return res.status(400).json({ message: "Invalid roomId parameter" });
     }
+    
     const strokes = await prisma.stroke.findMany({
       where: { roomId: numericRoomId },
       orderBy: { createdAt: "asc" },
     });
+    
+    console.log("📤 Returning strokes:", strokes.length, "for room", numericRoomId);
     res.json({ strokes });
   } catch (err) {
     console.error("Error fetching strokes:", err);

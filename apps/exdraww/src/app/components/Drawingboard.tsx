@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useCanvas } from "../hooks/useCanvas";
+import { useRenderAllStrokes } from "../hooks/useRenderAllStrokes";
 
 type DrawingData = {
   x: number;
@@ -23,81 +25,19 @@ export default function Drawingboard({
   size: number;
   color: string;
   onDraw: (stroke: DrawingData) => void; // Changed from Stroke
-  selectedTool: "pen" | "rectangle";
+  selectedTool: "pen" | "rectangle" | "circle" | "arrow";
 }) {
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(
     null
   );
-  const canvsRef = useRef<HTMLCanvasElement | null>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const { canvasRef: canvsRef, ctxRef } = useCanvas();
+  const { renderStrokes } = useRenderAllStrokes(stroke, ctxRef, canvsRef);
   const drawing = useRef(false);
 
+  // Use the custom rendering hook
   useEffect(() => {
-    const canvas = canvsRef.current;
-    if (!canvas) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const cxt = canvas.getContext("2d");
-    if (cxt) {
-      cxt.lineCap = "round";
-      ctxRef.current = cxt;
-    }
-  }, []);
-
-  useEffect(() => {
-    const cxt = ctxRef.current;
-    if (!cxt) return;
-
-    cxt.clearRect(0, 0, cxt.canvas.width, cxt.canvas.height);
-
-    stroke.forEach((strokePoint, index) => {
-      if (strokePoint.tool === "rectangle") {
-        // ✅ Add rectangle rendering
-        cxt.beginPath();
-        cxt.lineWidth = strokePoint.size;
-        cxt.strokeStyle = strokePoint.color;
-
-        const width = (strokePoint.endX || strokePoint.x) - strokePoint.x;
-        const height = (strokePoint.endY || strokePoint.y) - strokePoint.y;
-
-        cxt.strokeRect(strokePoint.x, strokePoint.y, width, height);
-      } else {
-        // ✅ Existing pen rendering logic
-        cxt.beginPath();
-        cxt.arc(
-          strokePoint.x,
-          strokePoint.y,
-          strokePoint.size / 2,
-          0,
-          2 * Math.PI
-        );
-        cxt.fillStyle = strokePoint.color;
-        cxt.fill();
-
-        if (index > 0) {
-          const prevStroke = stroke[index - 1];
-          const distance = Math.sqrt(
-            Math.pow(strokePoint.x - prevStroke.x, 2) +
-              Math.pow(strokePoint.y - prevStroke.y, 2)
-          );
-
-          if (
-            distance < 100 &&
-            prevStroke.color === strokePoint.color &&
-            prevStroke.size === strokePoint.size &&
-            prevStroke.tool !== "rectangle" // ✅ Don't connect to rectangles
-          ) {
-            cxt.beginPath();
-            cxt.lineWidth = strokePoint.size;
-            cxt.strokeStyle = strokePoint.color;
-            cxt.moveTo(prevStroke.x, prevStroke.y);
-            cxt.lineTo(strokePoint.x, strokePoint.y);
-            cxt.stroke();
-          }
-        }
-      }
-    });
-  }, [stroke]);
+    renderStrokes();
+  }, [stroke, renderStrokes]);
 
   const handleMouseUp = (e: React.MouseEvent) => {
     if (!drawing.current) return;
@@ -119,7 +59,48 @@ export default function Drawingboard({
           tool: "rectangle", // Add tool identifier
         };
 
+        console.log("🟦 Rectangle completed:", rectangleData);
+        console.log("📤 Sending rectangle to onDraw:", rectangleData);
         onDraw(rectangleData);
+      }
+      setStartPoint(null);
+    } else if (selectedTool === "circle" && startPoint) {
+      const rect = canvsRef.current?.getBoundingClientRect();
+      if (rect) {
+        const endX = e.clientX - rect.left;
+        const endY = e.clientY - rect.top;
+
+        const circle = {
+          x: startPoint.x,
+          y: startPoint.y,
+          endX: endX,
+          endY: endY,
+          color,
+          size,
+          tool: "circle",
+        };
+        console.log("🟡 Circle completed:", circle);
+        console.log("📤 Sending circle to onDraw:", circle);
+        onDraw(circle);
+      }
+      setStartPoint(null);
+    } else if (selectedTool === "arrow" && startPoint) {
+      const rect = canvsRef.current?.getBoundingClientRect();
+      if (rect) {
+        const endX = e.clientX - rect.left;
+        const endY = e.clientY - rect.top;
+
+        const arrowData = {
+          x: startPoint.x,
+          y: startPoint.y,
+          endX: endX,
+          endY: endY,
+          color,
+          size,
+          tool: "arrow",
+        };
+
+        onDraw(arrowData);
       }
       setStartPoint(null);
     }
@@ -141,10 +122,38 @@ export default function Drawingboard({
       } else if (selectedTool === "rectangle") {
         drawing.current = true;
         setStartPoint({ x, y });
+      } else if (selectedTool === "circle") {
+        drawing.current = true;
+        setStartPoint({ x, y });
+      } else if (selectedTool === "arrow") {
+        drawing.current = true;
+        setStartPoint({ x, y });
       }
     }
   };
+  const drawArrowhead = (
+    ctx: CanvasRenderingContext2D,
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number,
+    arrowSize: number
+  ) => {
+    const angle = Math.atan2(toY - fromY, toX - fromX);
 
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(
+      toX - arrowSize * Math.cos(angle - Math.PI / 6),
+      toY - arrowSize * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(
+      toX - arrowSize * Math.cos(angle + Math.PI / 6),
+      toY - arrowSize * Math.sin(angle + Math.PI / 6)
+    );
+    ctx.stroke();
+  };
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!drawing.current || !ctxRef.current || !canvsRef.current) return;
 
@@ -162,67 +171,8 @@ export default function Drawingboard({
       };
       onDraw(strokeData);
     } else if (selectedTool === "rectangle" && startPoint) {
-      // Clear canvas
-      ctxRef.current.clearRect(
-        0,
-        0,
-        canvsRef.current.width,
-        canvsRef.current.height
-      );
-
-      // ✅ Redraw all existing strokes first
-      stroke.forEach((strokePoint, index) => {
-        if (strokePoint.tool === "rectangle") {
-          ctxRef.current!.beginPath();
-          ctxRef.current!.lineWidth = strokePoint.size;
-          ctxRef.current!.strokeStyle = strokePoint.color;
-          ctxRef.current!.setLineDash([]); // Solid line for existing rectangles
-
-          const width = (strokePoint.endX || strokePoint.x) - strokePoint.x;
-          const height = (strokePoint.endY || strokePoint.y) - strokePoint.y;
-
-          ctxRef.current!.strokeRect(
-            strokePoint.x,
-            strokePoint.y,
-            width,
-            height
-          );
-        } else {
-          // Existing pen rendering logic
-          ctxRef.current!.beginPath();
-          ctxRef.current!.arc(
-            strokePoint.x,
-            strokePoint.y,
-            strokePoint.size / 2,
-            0,
-            2 * Math.PI
-          );
-          ctxRef.current!.fillStyle = strokePoint.color;
-          ctxRef.current!.fill();
-
-          if (index > 0) {
-            const prevStroke = stroke[index - 1];
-            const distance = Math.sqrt(
-              Math.pow(strokePoint.x - prevStroke.x, 2) +
-                Math.pow(strokePoint.y - prevStroke.y, 2)
-            );
-
-            if (
-              distance < 100 &&
-              prevStroke.color === strokePoint.color &&
-              prevStroke.size === strokePoint.size &&
-              prevStroke.tool !== "rectangle"
-            ) {
-              ctxRef.current!.beginPath();
-              ctxRef.current!.lineWidth = strokePoint.size;
-              ctxRef.current!.strokeStyle = strokePoint.color;
-              ctxRef.current!.moveTo(prevStroke.x, prevStroke.y);
-              ctxRef.current!.lineTo(strokePoint.x, strokePoint.y);
-              ctxRef.current!.stroke();
-            }
-          }
-        }
-      });
+      // ✅ Use the rendering hook instead of duplicated code
+      renderStrokes();
 
       // ✅ Then draw the preview rectangle with dashed line
       ctxRef.current.beginPath();
@@ -235,6 +185,38 @@ export default function Drawingboard({
       ctxRef.current.strokeRect(startPoint.x, startPoint.y, width, height);
 
       ctxRef.current.setLineDash([]); // Reset to solid line
+    } else if (selectedTool === "circle" && startPoint) {
+      renderStrokes();
+      const radius = Math.sqrt(
+        Math.pow(currentX - startPoint.x, 2) +
+          Math.pow(currentY - startPoint.y, 2)
+      );
+      ctxRef.current.beginPath();
+      ctxRef.current.strokeStyle = color;
+      ctxRef.current.lineWidth = size;
+      ctxRef.current.setLineDash([5, 5]);
+      ctxRef.current.arc(startPoint.x, startPoint.y, radius, 0, 2 * Math.PI);
+      ctxRef.current.stroke();
+      ctxRef.current.setLineDash([]);
+    } else if (selectedTool === "arrow" && startPoint) {
+      renderStrokes();
+      ctxRef.current.beginPath();
+      ctxRef.current.strokeStyle = color;
+      ctxRef.current.lineWidth = size;
+
+      ctxRef.current.setLineDash([5, 5]);
+      ctxRef.current.moveTo(startPoint.x, startPoint.y);
+      ctxRef.current.lineTo(currentX, currentY);
+      ctxRef.current.stroke();
+      drawArrowhead(
+        ctxRef.current,
+        startPoint.x,
+        startPoint.y,
+        currentX,
+        currentY,
+        size * 3
+      );
+      ctxRef.current.setLineDash([]);
     }
   };
 

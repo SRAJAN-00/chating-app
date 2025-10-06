@@ -15,5 +15,5 @@ export const useCanvas = () => {
     }
   };
   useEffect(initialSchema, []);
-  return { canvasRef, ctxRef, initialSchema };
+  return { canvasRef, ctxRef };
 };

@@ -181,9 +181,14 @@ wss.on("connection", async function connection(ws, request) {
           
           console.log("💾 Saving stroke to DB:", strokeToSave);
           
-          await prisma.stroke.create({
-            data: strokeToSave,
-          });
+          try {
+            const savedStroke = await prisma.stroke.create({
+              data: strokeToSave,
+            });
+            console.log("✅ Stroke saved successfully:", savedStroke.id);
+          } catch (dbError) {
+            console.error("❌ Database save error:", dbError);
+          }
           break;
       }
     } catch (err) {

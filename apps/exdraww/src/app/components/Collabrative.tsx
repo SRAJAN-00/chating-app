@@ -8,7 +8,9 @@ export default function Collabrative({ roomId }: { roomId: string }) {
   const [size, setSize] = useState(3);
   const [stroke, setStroke] = useState<any[]>([]);
   const [color, setColor] = useState("red");
-  const [selectedTool, setSelectedTool] = useState<"pen" | "rectangle">("pen");
+  const [selectedTool, setSelectedTool] = useState<
+    "pen" | "rectangle" | "circle" | "arrow"
+  >("pen");
   const [tokenDisplay, setTokenDisplay] = useState("");
   const socketRef = useRef<WebSocket | null>(null);
 
@@ -21,11 +23,17 @@ export default function Collabrative({ roomId }: { roomId: string }) {
   useEffect(() => {
     const fetchExistingStrokes = async () => {
       try {
+        console.log("🔍 Fetching existing strokes for room:", roomId);
         const response = await axios.get(`${BACKEND_URL}/stroke/${roomId}`);
         const existingStrokes = response.data.strokes || [];
+        console.log(
+          "📥 Received existing strokes:",
+          existingStrokes.length,
+          existingStrokes
+        );
         setStroke(existingStrokes);
       } catch (error) {
-        // ignore
+        console.error("❌ Error fetching strokes:", error);
       }
     };
 
@@ -85,10 +93,10 @@ export default function Collabrative({ roomId }: { roomId: string }) {
     if (socketRef.current) {
       socketRef.current.close();
     }
-    
+
     // Remove token from localStorage
     localStorage.removeItem("token");
-    
+
     // Redirect to login page (adjust path as needed)
     window.location.href = "/";
   };
@@ -99,9 +107,7 @@ export default function Collabrative({ roomId }: { roomId: string }) {
       <div className="w-full flex justify-between items-center mb-4 px-4">
         <div className="text-lg font-semibold">
           Drawing Room: {roomId}
-          <div className="text-sm text-gray-600">
-            Token: {tokenDisplay}
-          </div>
+          <div className="text-sm text-gray-600">Token: {tokenDisplay}</div>
         </div>
         <button
           onClick={handleLogout}
@@ -110,7 +116,7 @@ export default function Collabrative({ roomId }: { roomId: string }) {
           🚪 Logout
         </button>
       </div>
-      
+
       {/* Drawing controls */}
       <div className="mb-4 flex gap-4">
         <label>
@@ -144,6 +150,18 @@ export default function Collabrative({ roomId }: { roomId: string }) {
           className={`px-3 py-1 rounded ${selectedTool === "rectangle" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
         >
           Rectangle
+        </button>
+        <button
+          onClick={() => setSelectedTool("circle")}
+          className={`px-3 py-1 rounded ${selectedTool === "circle" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+        >
+          Circle
+        </button>
+        <button
+          onClick={() => setSelectedTool("arrow")}
+          className={`px-3 py-1 rounded ${selectedTool === "arrow" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+        >
+          Circle
         </button>
       </div>
       <Drawingboard
