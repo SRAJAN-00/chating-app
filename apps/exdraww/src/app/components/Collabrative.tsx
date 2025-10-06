@@ -161,7 +161,7 @@ export default function Collabrative({ roomId }: { roomId: string }) {
           onClick={() => setSelectedTool("arrow")}
           className={`px-3 py-1 rounded ${selectedTool === "arrow" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
         >
-          Circle
+          Arrow
         </button>
       </div>
       <Drawingboard
