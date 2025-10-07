@@ -190,6 +190,58 @@ wss.on("connection", async function connection(ws, request) {
             console.error("❌ Database save error:", dbError);
           }
           break;
+        
+        case "update_stroke":
+          const updateRoomId = parsedData.roomId;
+          const strokeIndex = parsedData.index;
+          const updatedStrokeData = parsedData.data;
+          
+          console.log("🔄 Update stroke received for room:", updateRoomId);
+          console.log("📤 Broadcasting update to room:", updateRoomId);
+          
+          users.forEach((user) => {
+            if (
+              user.rooms.includes(updateRoomId) && 
+              user.userId !== senderId
+            ) {
+              console.log("📤 Broadcasting update to user:", user.userId);
+              user.ws.send(
+                JSON.stringify({
+                  type: "update_stroke",
+                  index: strokeIndex,
+                  data: updatedStrokeData,
+                  roomId: updateRoomId,
+                  userId: senderId,
+                })
+              );
+            }
+          });
+          break;
+        
+        case "undo":
+          const undoRoomId = parsedData.roomId;
+          const undoStrokeHistory = parsedData.strokeHistory;
+          
+          console.log("⤴️ Undo received for room:", undoRoomId);
+          console.log("📤 Broadcasting undo to room:", undoRoomId);
+          
+          users.forEach((user) => {
+            if (
+              user.rooms.includes(undoRoomId) && 
+              user.userId !== senderId
+            ) {
+              console.log("📤 Broadcasting undo to user:", user.userId);
+              user.ws.send(
+                JSON.stringify({
+                  type: "undo",
+                  data: undoStrokeHistory,
+                  roomId: undoRoomId,
+                  userId: senderId,
+                })
+              );
+            }
+          });
+          break;
       }
     } catch (err) {
       console.log("Error parsing message: ", err);

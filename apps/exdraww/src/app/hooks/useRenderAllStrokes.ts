@@ -92,12 +92,7 @@ export const useRenderAllStrokes = (
           strokePoint.size * 3
         );
       } else {
-        // ✅ Existing pen rendering logic
-        cxt.beginPath();
-        cxt.arc(strokePoint.x, strokePoint.y, strokePoint.size, 0, 2 * Math.PI);
-        cxt.fillStyle = strokePoint.color;
-        cxt.fill();
-
+        // ✅ Improved pen rendering logic - smoother lines without visible dots
         if (index > 0) {
           const prevStroke = stroke[index - 1];
           const distance = Math.sqrt(
@@ -110,16 +105,32 @@ export const useRenderAllStrokes = (
             prevStroke.color === strokePoint.color &&
             prevStroke.size === strokePoint.size &&
             prevStroke.tool !== "rectangle" &&
-            prevStroke.tool !== "circle" && // ✅ Don't connect to rectangles
-            prevStroke.tool !== "arrow" // ✅ Add this
+            prevStroke.tool !== "circle" &&
+            prevStroke.tool !== "arrow" &&
+            (prevStroke.tool === "pen" || !prevStroke.tool) // Only connect pen strokes
           ) {
+            // Draw smooth line instead of dots
             cxt.beginPath();
             cxt.lineWidth = strokePoint.size;
             cxt.strokeStyle = strokePoint.color;
+            cxt.lineCap = "round"; // Make line ends round for smoother appearance
+            cxt.lineJoin = "round"; // Make line joins round
             cxt.moveTo(prevStroke.x, prevStroke.y);
             cxt.lineTo(strokePoint.x, strokePoint.y);
             cxt.stroke();
+          } else {
+            // Only draw a dot if it's the start of a new stroke or isolated point
+            cxt.beginPath();
+            cxt.arc(strokePoint.x, strokePoint.y, strokePoint.size / 2, 0, 2 * Math.PI);
+            cxt.fillStyle = strokePoint.color;
+            cxt.fill();
           }
+        } else {
+          // First stroke point - draw a small dot
+          cxt.beginPath();
+          cxt.arc(strokePoint.x, strokePoint.y, strokePoint.size / 2, 0, 2 * Math.PI);
+          cxt.fillStyle = strokePoint.color;
+          cxt.fill();
         }
       }
     });

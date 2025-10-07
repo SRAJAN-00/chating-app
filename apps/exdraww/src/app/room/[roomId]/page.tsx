@@ -10,9 +10,8 @@ export default function Room({
   const { roomId } = use(params);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-4">
-        <h1 className="text-2xl font-bold text-center mb-4">Room: {roomId}</h1>
+    <div className="">
+      <div className="">
         <Collabrative roomId={roomId} />
       </div>
     </div>
