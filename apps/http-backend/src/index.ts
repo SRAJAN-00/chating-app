@@ -153,7 +153,7 @@ app.get("/api/v1/stroke/:roomId", async (req, res) => {
   try {
     const { roomId } = req.params;
     console.log("🔍 GET /stroke request for roomId:", roomId);
-    
+
     if (!roomId) {
       return res.status(400).json({ message: "Missing roomId parameter" });
     }
@@ -162,17 +162,84 @@ app.get("/api/v1/stroke/:roomId", async (req, res) => {
       console.log("❌ Invalid roomId:", roomId);
       return res.status(400).json({ message: "Invalid roomId parameter" });
     }
-    
+
     const strokes = await prisma.stroke.findMany({
       where: { roomId: numericRoomId },
       orderBy: { createdAt: "asc" },
     });
-    
-    console.log("📤 Returning strokes:", strokes.length, "for room", numericRoomId);
+
+    console.log(
+      "📤 Returning strokes:",
+      strokes.length,
+      "for room",
+      numericRoomId
+    );
     res.json({ strokes });
   } catch (err) {
     console.error("Error fetching strokes:", err);
     res.status(500).json({ message: "Error fetching strokes" });
   }
 });
+
+// PUT endpoint to update a specific stroke
+app.put("/api/v1/stroke/:roomId/:index", async (req, res) => {
+  try {
+    const { roomId, index } = req.params;
+    const { strokeData } = req.body;
+
+    console.log("🔄 PUT /stroke request for roomId:", roomId, "index:", index);
+    console.log("📝 Update data:", strokeData);
+
+    if (!roomId || !index || !strokeData) {
+      return res.status(400).json({ message: "Missing required parameters" });
+    }
+
+    const numericRoomId = Number(roomId);
+    const numericIndex = Number(index);
+
+    if (isNaN(numericRoomId) || isNaN(numericIndex)) {
+      console.log("❌ Invalid roomId or index:", roomId, index);
+      return res
+        .status(400)
+        .json({ message: "Invalid roomId or index parameter" });
+    }
+
+    // Get all strokes for the room to find the one at the specific index
+    const strokes = await prisma.stroke.findMany({
+      where: { roomId: numericRoomId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (numericIndex >= strokes.length || numericIndex < 0) {
+      return res.status(400).json({ message: "Index out of range" });
+    }
+
+    const strokeToUpdate = strokes[numericIndex];
+
+    if (!strokeToUpdate) {
+      return res.status(404).json({ message: "Stroke not found" });
+    }
+
+    // Update the stroke in the database
+    const updatedStroke = await prisma.stroke.update({
+      where: { id: strokeToUpdate.id },
+      data: {
+        x: strokeData.x,
+        y: strokeData.y,
+        endX: strokeData.endX,
+        endY: strokeData.endY,
+        color: strokeData.color,
+        size: strokeData.size,
+        tool: strokeData.tool,
+      },
+    });
+
+    console.log("✅ Successfully updated stroke:", updatedStroke.id);
+    res.json({ message: "Stroke updated successfully", stroke: updatedStroke });
+  } catch (err) {
+    console.error("❌ Error updating stroke:", err);
+    res.status(500).json({ message: "Error updating stroke" });
+  }
+});
+
 app.listen(3001);

@@ -1,5 +1,6 @@
 // hooks/useRenderAllStrokes.ts
 import { useCallback } from "react";
+import { useRoughCanvas } from "./useRoughCanvas";
 
 type DrawingData = {
   x: number;
@@ -16,6 +17,13 @@ export const useRenderAllStrokes = (
   ctxRef: React.RefObject<CanvasRenderingContext2D | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>
 ) => {
+  // Initialize Rough.js canvas
+  const { 
+    drawRoughRectangle, 
+    drawRoughCircle, 
+    drawRoughArrow, 
+    drawRoughPen 
+  } = useRoughCanvas(canvasRef, ctxRef);
   // ✅ Add the drawArrowhead function here
   const drawArrowhead = (
     ctx: CanvasRenderingContext2D,
@@ -50,26 +58,15 @@ export const useRenderAllStrokes = (
 
     stroke.forEach((strokePoint, index) => {
       if (strokePoint.tool === "rectangle") {
-        // ✅ Add rectangle rendering
-        cxt.beginPath();
-        cxt.lineWidth = strokePoint.size;
-        cxt.strokeStyle = strokePoint.color;
-
-        const width = (strokePoint.endX || strokePoint.x) - strokePoint.x;
-        const height = (strokePoint.endY || strokePoint.y) - strokePoint.y;
-
-        cxt.strokeRect(strokePoint.x, strokePoint.y, width, height);
+        // ✨ Use Rough.js for hand-drawn rectangles
+        drawRoughRectangle(strokePoint);
       } else if (strokePoint.tool === "circle") {
-        cxt.beginPath();
-        cxt.lineWidth = strokePoint.size;
-        cxt.strokeStyle = strokePoint.color;
-        const radius = Math.sqrt(
-          Math.pow((strokePoint.endX || strokePoint.x) - strokePoint.x, 2) +
-            Math.pow((strokePoint.endY || strokePoint.y) - strokePoint.y, 2)
-        );
-        cxt.arc(strokePoint.x, strokePoint.y, radius, 0, 2 * Math.PI);
-        cxt.stroke();
+        // ✨ Use Rough.js for hand-drawn circles
+        drawRoughCircle(strokePoint);
       } else if (strokePoint.tool === "arrow") {
+        // ✨ Use Rough.js for hand-drawn arrows
+        drawRoughArrow(strokePoint);
+      } else if (strokePoint.tool === "pen") {
         cxt.beginPath();
         cxt.lineWidth = strokePoint.size;
         cxt.strokeStyle = strokePoint.color;
@@ -92,7 +89,7 @@ export const useRenderAllStrokes = (
           strokePoint.size * 3
         );
       } else {
-        // ✅ Improved pen rendering logic - smoother lines without visible dots
+        // Keep regular canvas rendering for pen strokes (smooth drawing)
         if (index > 0) {
           const prevStroke = stroke[index - 1];
           const distance = Math.sqrt(
@@ -107,20 +104,17 @@ export const useRenderAllStrokes = (
             prevStroke.tool !== "rectangle" &&
             prevStroke.tool !== "circle" &&
             prevStroke.tool !== "arrow" &&
-            (prevStroke.tool === "pen" || !prevStroke.tool) // Only connect pen strokes
+            (prevStroke.tool === "pen" || !prevStroke.tool)
           ) {
-            // Draw smooth line instead of dots
             cxt.beginPath();
             cxt.lineWidth = strokePoint.size;
             cxt.strokeStyle = strokePoint.color;
-            cxt.lineCap = "round"; // Make line ends round for smoother appearance
-            cxt.lineJoin = "round"; // Make line joins round
+            cxt.lineCap = "round";
+            cxt.lineJoin = "round";
             cxt.moveTo(prevStroke.x, prevStroke.y);
             cxt.lineTo(strokePoint.x, strokePoint.y);
             cxt.stroke();
           } else {
-            // Only draw a dot if it's the start of a new stroke or isolated point
-            cxt.beginPath();
             cxt.arc(strokePoint.x, strokePoint.y, strokePoint.size / 2, 0, 2 * Math.PI);
             cxt.fillStyle = strokePoint.color;
             cxt.fill();
@@ -134,7 +128,7 @@ export const useRenderAllStrokes = (
         }
       }
     });
-  }, [stroke, ctxRef, canvasRef]);
+  }, [stroke, ctxRef, canvasRef, drawRoughRectangle, drawRoughCircle, drawRoughArrow]);
 
   return { renderStrokes };
 };

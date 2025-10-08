@@ -21,9 +21,9 @@ const SelectionIcon = ({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-Width="2"
-      stroke-Linecap="round"
-      stroke-Linejoin="round"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className="icon icon-tabler icons-tabler-outline icon-tabler-pointer"
     >
       <path stroke="none" d="M0 0h24v24H0z" fill="none" />

@@ -173,7 +173,7 @@ export default function Collabrative({ roomId }: { roomId: string }) {
     window.location.href = "/";
   };
 
-  const handleUpdateStroke = (index: number, updatedStroke: any) => {
+  const handleUpdateStroke = async (index: number, updatedStroke: any) => {
     setStroke((prev) => {
       const newStrokes = [...prev];
       newStrokes[index] = updatedStroke;
@@ -191,6 +191,36 @@ export default function Collabrative({ roomId }: { roomId: string }) {
           data: updatedStroke,
         })
       );
+    }
+
+    // ✅ Persist the updated stroke to the database
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("❌ No token found for updating stroke");
+        return;
+      }
+
+      console.log("💾 Persisting updated stroke to database:", updatedStroke);
+      
+      await axios.put(
+        `${BACKEND_URL}/stroke/${roomId}/${index}`,
+        {
+          strokeData: updatedStroke,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("✅ Successfully persisted stroke update to database");
+    } catch (error) {
+      console.error("❌ Error persisting updated stroke:", error);
+      // Optionally, you could show a toast notification to the user
+      // or implement retry logic here
     }
   };
 
