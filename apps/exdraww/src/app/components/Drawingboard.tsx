@@ -66,9 +66,10 @@ export default function Drawingboard({
     onUpdateStroke
   );
 
+  // 🚀 Optimized rendering with useMemo to prevent unnecessary re-renders
   useEffect(() => {
     renderStrokes();
-  }, [stroke, renderStrokes]);
+  }, [renderStrokes]);
 
   // Draw resize handles when a shape is selected
   useEffect(() => {
