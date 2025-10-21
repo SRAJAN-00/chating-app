@@ -19,12 +19,23 @@ interface ShapePosition {
 
 export const useShapeResize = (stroke: DrawingData[]) => {
   const [isResizing, setIsResizing] = useState(false);
-  const [selectedHandleIndex, setSelectedHandleIndex] = useState<number | null>(null);
-  const [resizingShapeIndex, setResizingShapeIndex] = useState<number | null>(null);
-  const [originalResizeShape, setOriginalResizeShape] = useState<ShapePosition | null>(null);
-  const [resizeStartPoint, setResizeStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [selectedHandleIndex, setSelectedHandleIndex] = useState<number | null>(
+    null
+  );
+  const [resizingShapeIndex, setResizingShapeIndex] = useState<number | null>(
+    null
+  );
+  const [originalResizeShape, setOriginalResizeShape] =
+    useState<ShapePosition | null>(null);
+  const [resizeStartPoint, setResizeStartPoint] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
-  const drawResizeHandles = (ctx: CanvasRenderingContext2D, shape: DrawingData) => {
+  const drawResizeHandles = (
+    ctx: CanvasRenderingContext2D,
+    shape: DrawingData
+  ) => {
     const handleSize = 8;
     const x = shape.x;
     const y = shape.y;
@@ -55,7 +66,10 @@ export const useShapeResize = (stroke: DrawingData[]) => {
     return handles;
   };
 
-  const checkHandleClick = (point: { x: number; y: number }, handles: { x: number; y: number }[]) => {
+  const checkHandleClick = (
+    point: { x: number; y: number },
+    handles: { x: number; y: number }[]
+  ) => {
     return handles.findIndex(
       (handle: { x: number; y: number }) =>
         point.x >= handle.x - 4 &&
@@ -65,7 +79,12 @@ export const useShapeResize = (stroke: DrawingData[]) => {
     );
   };
 
-  const startResize = (handleIndex: number, shapeIndex: number, shape: DrawingData, startPoint: { x: number; y: number }) => {
+  const startResize = (
+    handleIndex: number,
+    shapeIndex: number,
+    shape: DrawingData,
+    startPoint: { x: number; y: number }
+  ) => {
     setIsResizing(true);
     setSelectedHandleIndex(handleIndex);
     setResizingShapeIndex(shapeIndex);
@@ -82,7 +101,12 @@ export const useShapeResize = (stroke: DrawingData[]) => {
     currentPoint: { x: number; y: number },
     onUpdate: (updatedShape: DrawingData) => void
   ) => {
-    if (!isResizing || selectedHandleIndex === null || resizingShapeIndex === null || !originalResizeShape) {
+    if (
+      !isResizing ||
+      selectedHandleIndex === null ||
+      resizingShapeIndex === null ||
+      !originalResizeShape
+    ) {
       return;
     }
 

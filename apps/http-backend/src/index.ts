@@ -242,4 +242,53 @@ app.put("/api/v1/stroke/:roomId/:index", async (req, res) => {
   }
 });
 
+app.delete("/api/v1/stroke/:roomId/:index", async (req, res) => {
+  try {
+    const { roomId, index } = req.params;
+    console.log(
+      "🔄 DELETE /stroke request for roomId:",
+      roomId,
+      "index:",
+      index
+    );
+
+    if (!roomId || !index) {
+      return res.status(400).json({ message: "Missing required parameters" });
+    }
+
+    const numericIndex = Number(index);
+    const numericRoomId = Number(roomId);
+    if (isNaN(numericRoomId) || isNaN(numericIndex)) {
+      console.log("❌ Invalid roomId or index:", roomId, index);
+      return res
+        .status(400)
+        .json({ message: "Invalid roomId or index parameter" });
+    }
+
+    // Delete the stroke from the database
+    const strokes = await prisma.stroke.findMany({
+      where: { roomId: numericRoomId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (numericIndex >= strokes.length || numericIndex < 0) {
+      return res.status(400).json({ message: "range out of bounds" });
+    }
+
+    const strokeToDelete = strokes[numericIndex];
+    if (!strokeToDelete) {
+      return res.status(404).json({ message: "Stroke not found" });
+    }
+
+    await prisma.stroke.delete({
+      where: { id: strokeToDelete.id },
+    });
+
+    res.json({ message: "Stroke deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting stroke:", err);
+    res.status(500).json({ message: "Error deleting stroke" });
+  }
+});
+
 app.listen(3001);

@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Drawingboard from "./Drawingboard";
-import ToolButton from "./ToolButton";
+import ToolButton from "./icons/ToolButton";
 import { WS_URL, BACKEND_URL } from "../../../config";
 import axios from "axios";
-import RectangleIcon from "./RactangleIcon";
-import CircleIcon from "./CircleIcon";
-import ArrowIcon from "./ArrowIcon";
-import SelectionIcon from "./SelectionIcon";
-import PenIcon from "./PenIcon";
+import RectangleIcon from "./icons/RactangleIcon";
+import CircleIcon from "./icons/CircleIcon";
+import ArrowIcon from "./icons/ArrowIcon";
+import SelectionIcon from "./icons/SelectionIcon";
+import PenIcon from "./icons/PenIcon";
 
 export default function Collabrative({ roomId }: { roomId: string }) {
   const [size, setSize] = useState(3);
@@ -22,7 +22,6 @@ export default function Collabrative({ roomId }: { roomId: string }) {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const socketRef = useRef<WebSocket | null>(null);
 
-  // Set token display after component mounts to avoid hydration mismatch
   useEffect(() => {
     const token = localStorage.getItem("token");
     setTokenDisplay(token ? token.slice(-10) : "");
@@ -31,14 +30,8 @@ export default function Collabrative({ roomId }: { roomId: string }) {
   useEffect(() => {
     const fetchExistingStrokes = async () => {
       try {
-        console.log("🔍 Fetching existing strokes for room:", roomId);
         const response = await axios.get(`${BACKEND_URL}/stroke/${roomId}`);
         const existingStrokes = response.data.strokes || [];
-        console.log(
-          "📥 Received existing strokes:",
-          existingStrokes.length,
-          existingStrokes
-        );
         setStroke(existingStrokes);
       } catch (error) {
         console.error("❌ Error fetching strokes:", error);
@@ -56,20 +49,16 @@ export default function Collabrative({ roomId }: { roomId: string }) {
     socketRef.current = ws;
 
     ws.onopen = () => {
-      console.log("🔗 WebSocket connected!");
       const joinMessage = { type: "join_room", roomId };
-      console.log("🚪 Joining room:", joinMessage);
       ws.send(JSON.stringify(joinMessage));
     };
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log("📥 WebSocket message received:", data);
+
       if (data.type === "stroke") {
-        console.log("✏️ Adding stroke to canvas:", data.data);
         setStroke((prev) => {
           const newStrokes = [...prev, data.data];
-          // Update history when receiving strokes from others
           setStrokeHistory((prevHistory) => {
             const newHistory = prevHistory.slice(0, historyIndex + 1);
             newHistory.push(newStrokes);
@@ -78,36 +67,40 @@ export default function Collabrative({ roomId }: { roomId: string }) {
           setHistoryIndex((prev) => prev + 1);
           return newStrokes;
         });
-      }
-      if (data.type === "update_stroke") {
-        console.log("🔄 Update stroke received:", data.index, data.data);
+      } else if (data.type === "update_stroke") {
         setStroke((prev) => {
           const newStrokes = [...prev];
           newStrokes[data.index] = data.data;
           return newStrokes;
         });
-      }
-      if (data.type === "undo") {
-        console.log("⤴️ Undo received from server:", data.data);
+      } else if (data.type === "undo") {
         setStroke(data.data);
+      } else if (data.type === "delete_stroke") {
+        console.log(
+          "🗑️ Delete received from server, strokeIndex:",
+          data.strokeIndex
+        );
+        setStroke((prev) =>
+          prev.filter((_, index) => index !== data.strokeIndex)
+        );
       }
     };
 
     ws.onerror = (error) => {
       console.error("❌ WebSocket error:", error);
     };
+
     ws.onclose = (event) => {
-      console.log("🔌 WebSocket closed:", event.code, event.reason);
+      // WebSocket closed
     };
 
     return () => ws.close();
-  }, [roomId]);
+  }, [roomId, historyIndex]); // ✅ FIXED: Added historyIndex dependency
+
   const handleDraw = (newStroke: any) => {
-    console.log("🎨 Frontend handleDraw received:", newStroke);
     const newStrokes = [...stroke, newStroke];
     setStroke(newStrokes);
 
-    // Save to history
     const newHistory = strokeHistory.slice(0, historyIndex + 1);
     newHistory.push(newStrokes);
     setStrokeHistory(newHistory);
@@ -120,19 +113,16 @@ export default function Collabrative({ roomId }: { roomId: string }) {
         roomId,
         data: newStroke,
       };
-      console.log("📡 Sending via WebSocket:", message);
       socket.send(JSON.stringify(message));
     }
   };
 
-  // Add undo function
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
       setHistoryIndex(newIndex);
       setStroke(strokeHistory[newIndex] || []);
 
-      // Send undo action via WebSocket
       const socket = socketRef.current;
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(
@@ -146,10 +136,8 @@ export default function Collabrative({ roomId }: { roomId: string }) {
     }
   }, [historyIndex, strokeHistory, roomId]);
 
-  // Add keyboard shortcut for undo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+Z or Cmd+Z for undo
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
@@ -161,15 +149,10 @@ export default function Collabrative({ roomId }: { roomId: string }) {
   }, [handleUndo]);
 
   const handleLogout = () => {
-    // Close WebSocket connection
     if (socketRef.current) {
       socketRef.current.close();
     }
-
-    // Remove token from localStorage
     localStorage.removeItem("token");
-
-    // Redirect to login page (adjust path as needed)
     window.location.href = "/";
   };
 
@@ -180,7 +163,6 @@ export default function Collabrative({ roomId }: { roomId: string }) {
       return newStrokes;
     });
 
-    // Send the update to other users via WebSocket
     const socket = socketRef.current;
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(
@@ -193,16 +175,12 @@ export default function Collabrative({ roomId }: { roomId: string }) {
       );
     }
 
-    // ✅ Persist the updated stroke to the database
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        console.error("❌ No token found for updating stroke");
         return;
       }
 
-      console.log("💾 Persisting updated stroke to database:", updatedStroke);
-      
       await axios.put(
         `${BACKEND_URL}/stroke/${roomId}/${index}`,
         {
@@ -215,28 +193,68 @@ export default function Collabrative({ roomId }: { roomId: string }) {
           },
         }
       );
-
-      console.log("✅ Successfully persisted stroke update to database");
     } catch (error) {
       console.error("❌ Error persisting updated stroke:", error);
-      // Optionally, you could show a toast notification to the user
-      // or implement retry logic here
     }
   };
 
+  const handleDeleteStroke = useCallback(
+    (strokeIndex: number) => {
+      const deleteStroke = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) {
+            console.error("❌ No token found for deleting stroke");
+            return;
+          }
+
+          console.log("🗑️ Deleting stroke at index:", strokeIndex);
+          console.log("🌐 Room ID:", roomId);
+          const deleteUrl = `${BACKEND_URL}/stroke/${roomId}/${strokeIndex}`;
+          console.log("📍 Delete URL:", deleteUrl);
+
+          // 1. Update local state immediately (optimistic update)
+          setStroke((prev) => prev.filter((_, index) => index !== strokeIndex));
+
+          // 2. Send WebSocket message to other users
+          const socket = socketRef.current;
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(
+              JSON.stringify({
+                type: "delete_stroke",
+                roomId,
+                strokeIndex,
+              })
+            );
+          }
+
+          // 3. Persist deletion to database
+          console.log("🚀 Making DELETE request to:", deleteUrl);
+          await axios.delete(deleteUrl, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          console.log("✅ Successfully deleted stroke from database");
+        } catch (error) {
+          console.error("❌ Error deleting stroke:", error);
+          // TODO: Optionally revert the optimistic update on error
+        }
+      };
+
+      deleteStroke();
+    },
+    [roomId]
+  );
+
   return (
     <div className="">
-      <div className=" max-w-12xl ">
-        {/* Top bar with user info and logout button */}
-
-        {/* Drawing controls */}
-        {/* Canvas with floating controls */}
+      <div className="max-w-12xl">
         <div className="relative bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-          {/* Canvas with floating controls */}
           <div className="relative flex bg-white rounded-xl justify-center shadow-lg border border-gray-100 overflow-hidden">
-            {/* Toolbar centered inside the canvas */}
             <div
-              className="absolute top-10 left-1/2  bg-neutral-0 mt-4 border py-2 shadow-sm rounded-xl   flex justify-evenly min-w-[500px]"
+              className="absolute top-10 left-1/2 bg-neutral-0 mt-4 border py-2 shadow-sm rounded-xl flex justify-evenly min-w-[500px]"
               style={{ transform: "translate(-50%, -50%)" }}
             >
               <ToolButton
@@ -275,7 +293,6 @@ export default function Collabrative({ roomId }: { roomId: string }) {
                 Select
               </ToolButton>
 
-              {/* Undo Button */}
               <button
                 onClick={handleUndo}
                 disabled={historyIndex <= 0}
@@ -289,7 +306,7 @@ export default function Collabrative({ roomId }: { roomId: string }) {
               </button>
             </div>
 
-            {/* Canvas */}
+            {/* ✅ FIXED: Added missing onDeleteStroke prop */}
             <Drawingboard
               stroke={stroke}
               size={size}
@@ -297,7 +314,10 @@ export default function Collabrative({ roomId }: { roomId: string }) {
               onDraw={handleDraw}
               selectedTool={selectedTool}
               onUpdateStroke={handleUpdateStroke}
+              onDeleteStroke={handleDeleteStroke}
             />
+
+            {/* 🗑️ Delete Button - Shows when shape is selected */}
           </div>
         </div>
       </div>

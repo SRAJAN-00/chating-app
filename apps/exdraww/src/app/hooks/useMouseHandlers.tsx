@@ -19,21 +19,40 @@ export const useMouseHandlers = (
   shapeResize: any,
   drawingTools: any,
   stroke: DrawingData[],
-  onUpdateStroke?: (index: number, updatedStroke: DrawingData) => void
+  onUpdateStroke?: (index: number, updatedStroke: DrawingData) => void,
+  onDeleteStroke?: (index: number) => void
 ) => {
   const handleMouseDown = (e: React.MouseEvent) => {
     const point = getMousePoint(e, canvasRef.current);
     if (!point) return;
 
+    // ✅ Optional: Add right-click delete
+    if (e.button === 2 && selectedTool === "select") {
+      // Right click
+      const shapeIndex = shapeSelection.findRectangleAtPoint(point.x, point.y);
+      if (shapeIndex !== null && onDeleteStroke) {
+        onDeleteStroke(shapeIndex);
+        return;
+      }
+    }
+
     if (selectedTool === "select") {
       // Handle selection logic
       if (shapeSelection.selectedShapeIndex !== null) {
         const selectedShape = stroke[shapeSelection.selectedShapeIndex];
-        const handles = shapeResize.drawResizeHandles(canvasRef.current?.getContext('2d')!, selectedShape);
+        const handles = shapeResize.drawResizeHandles(
+          canvasRef.current?.getContext("2d")!,
+          selectedShape
+        );
         const handleIndex = shapeResize.checkHandleClick(point, handles);
 
         if (handleIndex !== -1) {
-          shapeResize.startResize(handleIndex, shapeSelection.selectedShapeIndex, selectedShape, point);
+          shapeResize.startResize(
+            handleIndex,
+            shapeSelection.selectedShapeIndex,
+            selectedShape,
+            point
+          );
           return;
         }
       }
@@ -67,10 +86,13 @@ export const useMouseHandlers = (
 
     // Handle dragging
     if (selectedTool === "select" && shapeSelection.isDragging) {
-      shapeSelection.updateDrag(point, ({ newX, newY, newEndX, newEndY }: any) => {
-        // Real-time drag visualization logic would go here
-        // This could be extracted to another hook as well
-      });
+      shapeSelection.updateDrag(
+        point,
+        ({ newX, newY, newEndX, newEndY }: any) => {
+          // Real-time drag visualization logic would go here
+          // This could be extracted to another hook as well
+        }
+      );
       return;
     }
 
@@ -90,7 +112,10 @@ export const useMouseHandlers = (
 
     // Handle drag completion
     if (selectedTool === "select" && shapeSelection.isDragging) {
-      if (shapeSelection.selectedShapeIndex !== null && shapeSelection.originalShapePosition) {
+      if (
+        shapeSelection.selectedShapeIndex !== null &&
+        shapeSelection.originalShapePosition
+      ) {
         const dragOffset = {
           x: point.x - shapeSelection.dragStartPoint.x,
           y: point.y - shapeSelection.dragStartPoint.y,
@@ -98,8 +123,12 @@ export const useMouseHandlers = (
 
         const newX = shapeSelection.originalShapePosition.x + dragOffset.x;
         const newY = shapeSelection.originalShapePosition.y + dragOffset.y;
-        const newEndX = (shapeSelection.originalShapePosition.endX || shapeSelection.originalShapePosition.x) + dragOffset.x;
-        const newEndY = (shapeSelection.originalShapePosition.endY || shapeSelection.originalShapePosition.y) + dragOffset.y;
+        const newEndX =
+          (shapeSelection.originalShapePosition.endX ||
+            shapeSelection.originalShapePosition.x) + dragOffset.x;
+        const newEndY =
+          (shapeSelection.originalShapePosition.endY ||
+            shapeSelection.originalShapePosition.y) + dragOffset.y;
 
         if (onUpdateStroke) {
           onUpdateStroke(shapeSelection.selectedShapeIndex, {

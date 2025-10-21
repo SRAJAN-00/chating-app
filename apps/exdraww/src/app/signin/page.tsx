@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { BACKEND_URL } from "../../../config";
@@ -10,8 +10,12 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSignIn = async () => {
-    if (!username || !password) {
+  const isFormValid = useMemo(() => {
+    return username.trim().length > 0 && password.trim().length > 0;
+  }, [username, password]);
+
+  const handleSignIn = useCallback(async () => {
+    if (!isFormValid) {
       alert("Please fill in all fields");
       return;
     }
@@ -37,7 +41,7 @@ export default function SignIn() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isFormValid, username, password, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-neutral-100 to-blue-100">

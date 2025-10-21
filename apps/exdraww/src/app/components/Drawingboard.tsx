@@ -31,6 +31,7 @@ export default function Drawingboard({
   onDraw,
   selectedTool,
   onUpdateStroke,
+  onDeleteStroke,
 }: {
   stroke: DrawingData[];
   size: number;
@@ -38,13 +39,14 @@ export default function Drawingboard({
   onDraw: (stroke: DrawingData) => void;
   selectedTool: "pen" | "rectangle" | "circle" | "arrow" | "select";
   onUpdateStroke?: (index: number, updatedStroke: DrawingData) => void;
+  onDeleteStroke?: (index: number) => void;
 }) {
   // Initialize hooks
   const shapeSelection = useShapeSelection(stroke);
   const shapeResize = useShapeResize(stroke);
   const { canvasRef: canvsRef, ctxRef } = useCanvas();
   const { renderStrokes } = useRenderAllStrokes(stroke, ctxRef, canvsRef);
-  
+
   // Initialize drawing tools hook
   const drawingTools = useDrawingTools(
     canvsRef,
@@ -54,7 +56,7 @@ export default function Drawingboard({
     color,
     size
   );
-  
+
   // Initialize mouse event handlers
   const mouseHandlers = useMouseHandlers(
     canvsRef,
@@ -63,7 +65,8 @@ export default function Drawingboard({
     shapeResize,
     drawingTools,
     stroke,
-    onUpdateStroke
+    onUpdateStroke,
+    onDeleteStroke
   );
 
   // 🚀 Optimized rendering with useMemo to prevent unnecessary re-renders
@@ -84,12 +87,31 @@ export default function Drawingboard({
       }
     }
   }, [shapeSelection.selectedShapeIndex, stroke, selectedTool]);
+  // Add this useEffect to handle Delete key
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      console.log("🔑 Key pressed:", e.key);
+      console.log(
+        "🎯 Selected shape index:",
+        shapeSelection.selectedShapeIndex
+      );
+      console.log("🗑️ onDeleteStroke available:", !!onDeleteStroke);
 
+      if (e.key === "Delete" && shapeSelection.selectedShapeIndex !== null) {
+        console.log(
+          "🚀 Attempting to delete shape at index:",
+          shapeSelection.selectedShapeIndex
+        );
+        // Delete the selected shape
+        onDeleteStroke?.(shapeSelection.selectedShapeIndex);
+        // Clear selection
+        shapeSelection.clearSelection();
+      }
+    };
 
-
-
-
-
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [shapeSelection.selectedShapeIndex, onDeleteStroke, shapeSelection]);
 
   return (
     <canvas

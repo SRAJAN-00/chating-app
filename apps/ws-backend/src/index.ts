@@ -24,31 +24,37 @@ wss.on("connection", async function connection(ws, request) {
       console.log("✅ Token verified for user:", decoded.userId);
       return decoded.userId;
     } catch (err) {
-      console.log("❌ JWT Error:", err instanceof Error ? err.message : String(err));
+      console.log(
+        "❌ JWT Error:",
+        err instanceof Error ? err.message : String(err)
+      );
       return null;
     }
   }
 
   const url = request.url;
   console.log("🔗 WebSocket connection attempt, URL:", url);
-  
+
   if (!url) {
     console.log("❌ No URL provided");
     ws.close();
     return;
   }
-  
+
   const queryParams = new URLSearchParams(url.split("?")[1]);
   const token = queryParams.get("token");
-  
-  console.log("🎫 Received token:", token ? `${token.slice(0, 10)}...${token.slice(-10)}` : "null");
+
+  console.log(
+    "🎫 Received token:",
+    token ? `${token.slice(0, 10)}...${token.slice(-10)}` : "null"
+  );
 
   if (!token) {
     console.log("❌ No token provided");
     ws.close();
     return;
   }
-  
+
   const userId = checkUserAuth(token);
   if (!userId) {
     console.log("❌ Invalid token, closing connection");
@@ -83,11 +89,15 @@ wss.on("connection", async function connection(ws, request) {
           if (!user.rooms.includes(parsedData.roomId)) {
             user.rooms.push(parsedData.roomId);
           }
-          
+
           // Count users in this room
-          const usersInRoom = users.filter(u => u.rooms.includes(parsedData.roomId));
-          console.log(`🏠 Room ${parsedData.roomId} now has ${usersInRoom.length} users:`, 
-                     usersInRoom.map(u => u.userId));
+          const usersInRoom = users.filter((u) =>
+            u.rooms.includes(parsedData.roomId)
+          );
+          console.log(
+            `🏠 Room ${parsedData.roomId} now has ${usersInRoom.length} users:`,
+            usersInRoom.map((u) => u.userId)
+          );
           break;
         case "leave_room":
           user.rooms = user.rooms.filter(
@@ -136,7 +146,7 @@ wss.on("connection", async function connection(ws, request) {
         case "stroke":
           const strokeRoomId = parsedData.roomId;
           const strokeData = parsedData.data;
-          
+
           console.log("📝 Stroke received:", {
             roomId: strokeRoomId,
             tool: strokeData.tool,
@@ -144,15 +154,18 @@ wss.on("connection", async function connection(ws, request) {
             y: strokeData.y,
             endX: strokeData.endX,
             endY: strokeData.endY,
-            senderId
+            senderId,
           });
 
-          const recipientUsers = users.filter(user => 
-            user.rooms.includes(strokeRoomId) && user.userId !== senderId
+          const recipientUsers = users.filter(
+            (user) =>
+              user.rooms.includes(strokeRoomId) && user.userId !== senderId
           );
-          
-          console.log(`📤 Broadcasting stroke to ${recipientUsers.length} users in room ${strokeRoomId}`);
-          
+
+          console.log(
+            `📤 Broadcasting stroke to ${recipientUsers.length} users in room ${strokeRoomId}`
+          );
+
           users.forEach((user) => {
             if (user.rooms.includes(strokeRoomId) && user.userId !== senderId) {
               console.log("📤 Broadcasting stroke to user:", user.userId);
@@ -178,9 +191,9 @@ wss.on("connection", async function connection(ws, request) {
             endY: strokeData.endY || null,
             tool: strokeData.tool || "pen",
           };
-          
+
           console.log("💾 Saving stroke to DB:", strokeToSave);
-          
+
           try {
             const savedStroke = await prisma.stroke.create({
               data: strokeToSave,
@@ -190,20 +203,17 @@ wss.on("connection", async function connection(ws, request) {
             console.error("❌ Database save error:", dbError);
           }
           break;
-        
+
         case "update_stroke":
           const updateRoomId = parsedData.roomId;
           const strokeIndex = parsedData.index;
           const updatedStrokeData = parsedData.data;
-          
+
           console.log("🔄 Update stroke received for room:", updateRoomId);
           console.log("📤 Broadcasting update to room:", updateRoomId);
-          
+
           users.forEach((user) => {
-            if (
-              user.rooms.includes(updateRoomId) && 
-              user.userId !== senderId
-            ) {
+            if (user.rooms.includes(updateRoomId) && user.userId !== senderId) {
               console.log("📤 Broadcasting update to user:", user.userId);
               user.ws.send(
                 JSON.stringify({
@@ -217,19 +227,16 @@ wss.on("connection", async function connection(ws, request) {
             }
           });
           break;
-        
+
         case "undo":
           const undoRoomId = parsedData.roomId;
           const undoStrokeHistory = parsedData.strokeHistory;
-          
+
           console.log("⤴️ Undo received for room:", undoRoomId);
           console.log("📤 Broadcasting undo to room:", undoRoomId);
-          
+
           users.forEach((user) => {
-            if (
-              user.rooms.includes(undoRoomId) && 
-              user.userId !== senderId
-            ) {
+            if (user.rooms.includes(undoRoomId) && user.userId !== senderId) {
               console.log("📤 Broadcasting undo to user:", user.userId);
               user.ws.send(
                 JSON.stringify({
@@ -241,6 +248,30 @@ wss.on("connection", async function connection(ws, request) {
               );
             }
           });
+          break;
+        case "delete_stroke":
+          const deleteRoomId = parsedData.roomId;
+          const strokeIndexToDelete = parsedData.strokeIndex;
+
+          console.log("🗑️ Delete stroke received for room:", deleteRoomId);
+          console.log("📤 Broadcasting delete to room:", deleteRoomId);
+
+          users.forEach((user) => {
+            if (user.rooms.includes(deleteRoomId) && user.userId !== senderId) {
+              console.log("📤 Broadcasting delete to user:", user.userId);
+              user.ws.send(
+                JSON.stringify({
+                  type: "delete_stroke",
+                  roomId: deleteRoomId,
+                  strokeIndex: strokeIndexToDelete,
+                  userId: senderId,
+                })
+              );
+            }
+          });
+          break;
+        default:
+          console.log("❓ Unknown message type:", parsedData.type);
           break;
       }
     } catch (err) {
