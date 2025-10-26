@@ -1,6 +1,5 @@
-// hooks/useRenderAllStrokes.ts - Optimized with Rough.js integration
+// hooks/useRenderAllStrokes.ts - Canvas 2D API only
 import { useCallback, useMemo } from "react";
-import { useRoughCanvas } from "./useRoughCanvas";
 
 type DrawingData = {
   x: number;
@@ -17,9 +16,7 @@ export const useRenderAllStrokes = (
   ctxRef: React.RefObject<CanvasRenderingContext2D | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>
 ) => {
-  // Initialize Rough.js canvas for hand-drawn appearance
-  const { drawRoughRectangle, drawRoughCircle, drawRoughArrow } =
-    useRoughCanvas(canvasRef, ctxRef);
+
 
   // 🚀 Memoize the stroke array to prevent unnecessary recalculations
   const optimizedStrokes = useMemo(() => {
@@ -58,40 +55,63 @@ export const useRenderAllStrokes = (
     []
   );
 
-  // 🎯 Optimized render function with Rough.js that only re-renders when necessary
+  // Render function using only Canvas 2D API
   const renderStrokes = useCallback(() => {
     const ctx = ctxRef.current;
     const canvas = canvasRef.current;
     if (!ctx || !canvas) return;
 
-    // Clear canvas once
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Render all shapes efficiently with Rough.js for hand-drawn look
     optimizedStrokes.forEach(({ data: strokePoint, index }) => {
       if (strokePoint.tool === "rectangle") {
-        // ✨ Use Rough.js for hand-drawn rectangles
-        drawRoughRectangle(strokePoint);
+        ctx.save();
+        ctx.strokeStyle = strokePoint.color;
+        ctx.lineWidth = strokePoint.size;
+        ctx.beginPath();
+        ctx.rect(
+          strokePoint.x,
+          strokePoint.y,
+          (strokePoint.endX || strokePoint.x) - strokePoint.x,
+          (strokePoint.endY || strokePoint.y) - strokePoint.y
+        );
+        ctx.stroke();
+        ctx.restore();
       } else if (strokePoint.tool === "circle") {
-        // ✨ Use Rough.js for hand-drawn circles
-        drawRoughCircle(strokePoint);
+        ctx.save();
+        ctx.strokeStyle = strokePoint.color;
+        ctx.lineWidth = strokePoint.size;
+        ctx.beginPath();
+        const radius = Math.sqrt(
+          Math.pow((strokePoint.endX || strokePoint.x) - strokePoint.x, 2) +
+          Math.pow((strokePoint.endY || strokePoint.y) - strokePoint.y, 2)
+        );
+        ctx.arc(strokePoint.x, strokePoint.y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.restore();
       } else if (strokePoint.tool === "arrow") {
-        // ✨ Use Rough.js for hand-drawn arrows
-        drawRoughArrow(strokePoint);
+        ctx.save();
+        ctx.strokeStyle = strokePoint.color;
+        ctx.lineWidth = strokePoint.size;
+        ctx.beginPath();
+        ctx.moveTo(strokePoint.x, strokePoint.y);
+        ctx.lineTo(strokePoint.endX || strokePoint.x, strokePoint.endY || strokePoint.y);
+        ctx.stroke();
+        // Draw arrowhead
+        drawArrowhead(
+          ctx,
+          strokePoint.x,
+          strokePoint.y,
+          strokePoint.endX || strokePoint.x,
+          strokePoint.endY || strokePoint.y,
+          strokePoint.size * 3
+        );
+        ctx.restore();
       } else {
-        // Handle pen strokes with smooth line connections (regular canvas for smoothness)
         renderPenStroke(ctx, strokePoint, index, stroke);
       }
     });
-  }, [
-    optimizedStrokes,
-    ctxRef,
-    canvasRef,
-    stroke,
-    drawRoughRectangle,
-    drawRoughCircle,
-    drawRoughArrow,
-  ]);
+  }, [optimizedStrokes, ctxRef, canvasRef, stroke]);
 
   // 🖊️ Separate pen stroke rendering for better performance (keeps smooth drawing)
   const renderPenStroke = useCallback(
@@ -143,5 +163,59 @@ export const useRenderAllStrokes = (
     []
   );
 
-  return { renderStrokes };
+  const addShape = (newShape: DrawingData) => {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+
+    if (newShape.tool === "rectangle") {
+      ctx.save();
+      ctx.strokeStyle = newShape.color;
+      ctx.lineWidth = newShape.size;
+      ctx.beginPath();
+      ctx.rect(
+        newShape.x,
+        newShape.y,
+        (newShape.endX || newShape.x) - newShape.x,
+        (newShape.endY || newShape.y) - newShape.y
+      );
+      ctx.stroke();
+      ctx.restore();
+    } else if (newShape.tool === "circle") {
+      ctx.save();
+      ctx.strokeStyle = newShape.color;
+      ctx.lineWidth = newShape.size;
+      ctx.beginPath();
+      const radius = Math.sqrt(
+        Math.pow((newShape.endX || newShape.x) - newShape.x, 2) +
+        Math.pow((newShape.endY || newShape.y) - newShape.y, 2)
+      );
+      ctx.arc(newShape.x, newShape.y, radius, 0, 2 * Math.PI);
+      ctx.stroke();
+      ctx.restore();
+    } else if (newShape.tool === "arrow") {
+      ctx.save();
+      ctx.strokeStyle = newShape.color;
+      ctx.lineWidth = newShape.size;
+      ctx.beginPath();
+      ctx.moveTo(newShape.x, newShape.y);
+      ctx.lineTo(newShape.endX || newShape.x, newShape.endY || newShape.y);
+      ctx.stroke();
+      drawArrowhead(
+        ctx,
+        newShape.x,
+        newShape.y,
+        newShape.endX || newShape.x,
+        newShape.endY || newShape.y,
+        newShape.size * 3
+      );
+      ctx.restore();
+    } else {
+      renderPenStroke(ctx, newShape, stroke.length, [...stroke, newShape]);
+    }
+  };
+
+  return {
+    renderStrokes,
+    addShape, // 👈 expose this
+  };
 };

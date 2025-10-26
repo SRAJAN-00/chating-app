@@ -8,45 +8,7 @@ type DrawingData = {
   tool?: string;
 };
 
-// Rough.js drawing options for consistent styling
-export const getRoughOptions = (
-  color: string,
-  size: number,
-  isDashed = false
-) => ({
-  stroke: color,
-  strokeWidth: size,
-  roughness: 1.5, // Controls how rough the lines are
-  bowing: 2, // Controls how much the lines bow
-  ...(isDashed && {
-    strokeLineDash: [5, 5],
-    strokeDashOffset: 0,
-  }),
-});
-
-// Helper to draw rough arrowhead (since rough.js doesn't have built-in arrowhead)
-export const drawRoughArrowhead = (
-  roughCanvas: any,
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-  arrowSize: number,
-  color: string,
-  size: number
-) => {
-  const angle = Math.atan2(toY - fromY, toX - fromX);
-
-  const arrowX1 = toX - arrowSize * Math.cos(angle - Math.PI / 6);
-  const arrowY1 = toY - arrowSize * Math.sin(angle - Math.PI / 6);
-  const arrowX2 = toX - arrowSize * Math.cos(angle + Math.PI / 6);
-  const arrowY2 = toY - arrowSize * Math.sin(angle + Math.PI / 6);
-
-  const options = getRoughOptions(color, size);
-
-  roughCanvas.line(toX, toY, arrowX1, arrowY1, options);
-  roughCanvas.line(toX, toY, arrowX2, arrowY2, options);
-};
+// ...existing code...
 
 export const drawArrowhead = (
   ctx: CanvasRenderingContext2D,

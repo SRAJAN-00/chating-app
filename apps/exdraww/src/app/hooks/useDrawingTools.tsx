@@ -1,10 +1,8 @@
 import { useState, useRef } from "react";
 import {
   getMousePoint,
-  drawArrowhead,
-  getRoughOptions,
+  drawArrowhead
 } from "../utils/shapeUtils";
-import { useRoughCanvas } from "./useRoughCanvas";
 
 type DrawingData = {
   x: number;
@@ -22,10 +20,18 @@ export const useDrawingTools = (
   renderStrokes: () => void,
   onDraw: (stroke: DrawingData) => void,
   color: string,
-  size: number
+  size: number,
+  addShape: (newShape: {
+    x: number;
+    y: number;
+    color: string;
+    size: number;
+    endX?: number;
+    endY?: number;
+    tool?: string;
+  }) => void
 ) => {
-  // Initialize Rough.js for preview drawing
-  const { roughCanvas } = useRoughCanvas(canvasRef, ctxRef);
+  // No Rough.js, use only Canvas 2D API for previews
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(
     null
   );
@@ -81,69 +87,71 @@ export const useDrawingTools = (
   };
 
   const handleRectangleMove = (point: { x: number; y: number }) => {
-    if (!drawing.current || !startPoint || !roughCanvas) return;
+    if (!drawing.current || !startPoint || !ctxRef.current) return;
 
     renderStrokes();
 
-    // Draw rough preview rectangle with dashed style
-    const width = point.x - startPoint.x;
-    const height = point.y - startPoint.y;
-
-    roughCanvas.rectangle(
+    // Draw preview rectangle with dashed style
+    ctxRef.current.save();
+    ctxRef.current.strokeStyle = color;
+    ctxRef.current.lineWidth = size;
+    ctxRef.current.setLineDash([5, 5]);
+    ctxRef.current.beginPath();
+    ctxRef.current.rect(
       startPoint.x,
       startPoint.y,
-      width,
-      height,
-      getRoughOptions(color, size, true)
+      point.x - startPoint.x,
+      point.y - startPoint.y
     );
+    ctxRef.current.stroke();
+    ctxRef.current.setLineDash([]);
+    ctxRef.current.restore();
   };
 
   const handleCircleMove = (point: { x: number; y: number }) => {
-    if (!drawing.current || !startPoint || !roughCanvas) return;
+    if (!drawing.current || !startPoint || !ctxRef.current) return;
 
     renderStrokes();
     const radius = Math.sqrt(
       Math.pow(point.x - startPoint.x, 2) + Math.pow(point.y - startPoint.y, 2)
     );
 
-    // Draw rough preview circle with dashed style
-    roughCanvas.circle(
-      startPoint.x,
-      startPoint.y,
-      radius * 2,
-      getRoughOptions(color, size, true)
-    );
+    // Draw preview circle with dashed style
+    ctxRef.current.save();
+    ctxRef.current.strokeStyle = color;
+    ctxRef.current.lineWidth = size;
+    ctxRef.current.setLineDash([5, 5]);
+    ctxRef.current.beginPath();
+    ctxRef.current.arc(startPoint.x, startPoint.y, radius, 0, 2 * Math.PI);
+    ctxRef.current.stroke();
+    ctxRef.current.setLineDash([]);
+    ctxRef.current.restore();
   };
 
   const handleArrowMove = (point: { x: number; y: number }) => {
-    if (!drawing.current || !startPoint || !roughCanvas) return;
+    if (!drawing.current || !startPoint || !ctxRef.current) return;
 
     renderStrokes();
 
-    // Draw rough preview arrow with dashed style
-    roughCanvas.line(
+    // Draw preview arrow with dashed style
+    ctxRef.current.save();
+    ctxRef.current.strokeStyle = color;
+    ctxRef.current.lineWidth = size;
+    ctxRef.current.setLineDash([5, 5]);
+    ctxRef.current.beginPath();
+    ctxRef.current.moveTo(startPoint.x, startPoint.y);
+    ctxRef.current.lineTo(point.x, point.y);
+    ctxRef.current.stroke();
+    drawArrowhead(
+      ctxRef.current,
       startPoint.x,
       startPoint.y,
       point.x,
       point.y,
-      getRoughOptions(color, size, true)
+      size * 3
     );
-
-    // Draw arrowhead preview (still using regular canvas for precision)
-    if (ctxRef.current) {
-      ctxRef.current.strokeStyle = color;
-      ctxRef.current.lineWidth = size;
-      ctxRef.current.setLineDash([5, 5]);
-      drawArrowhead(
-        ctxRef.current,
-        startPoint.x,
-        startPoint.y,
-        point.x,
-        point.y,
-        size * 3
-      );
-      ctxRef.current.setLineDash([]);
-    }
+    ctxRef.current.setLineDash([]);
+    ctxRef.current.restore();
   };
 
   const handleShapeComplete = (

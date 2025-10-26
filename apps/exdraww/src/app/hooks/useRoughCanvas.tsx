@@ -25,7 +25,8 @@ export const useRoughCanvas = (
     }
   }, [canvasRef, ctxRef]);
 
-  const drawRoughRectangle = (shape: DrawingData) => {
+  // Accept seed for deterministic rendering
+  const drawRoughRectangle = (shape: DrawingData, seed?: number) => {
     if (!roughCanvas) return;
 
     const width = (shape.endX || shape.x) - shape.x;
@@ -36,11 +37,11 @@ export const useRoughCanvas = (
       shape.y,
       width,
       height,
-      getRoughOptions(shape.color, shape.size)
+      getRoughOptions(shape.color, shape.size, false, seed)
     );
   };
 
-  const drawRoughCircle = (shape: DrawingData) => {
+  const drawRoughCircle = (shape: DrawingData, seed?: number) => {
     if (!roughCanvas) return;
 
     const radius = Math.sqrt(
@@ -52,11 +53,11 @@ export const useRoughCanvas = (
       shape.x,
       shape.y,
       radius * 2,
-      getRoughOptions(shape.color, shape.size)
+      getRoughOptions(shape.color, shape.size, false, seed)
     );
   };
 
-  const drawRoughArrow = (shape: DrawingData) => {
+  const drawRoughArrow = (shape: DrawingData, seed?: number) => {
     if (!roughCanvas) return;
 
     // Draw main line with rough.js
@@ -65,7 +66,7 @@ export const useRoughCanvas = (
       shape.y,
       shape.endX || shape.x,
       shape.endY || shape.y,
-      getRoughOptions(shape.color, shape.size)
+      getRoughOptions(shape.color, shape.size, false, seed)
     );
 
     // Draw arrowhead using utility function
