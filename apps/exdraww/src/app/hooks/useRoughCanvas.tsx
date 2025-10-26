@@ -1,6 +1,6 @@
-import { useEffect, useState, RefObject } from 'react';
-import rough from 'roughjs';
-import { getRoughOptions, drawRoughArrowhead } from '../utils/shapeUtils';
+import { useEffect, useState, RefObject } from "react";
+import rough from "roughjs";
+import { getRoughOptions, drawRoughArrowhead } from "../utils/shapeUtils";
 
 type DrawingData = {
   x: number;
@@ -27,36 +27,47 @@ export const useRoughCanvas = (
 
   const drawRoughRectangle = (shape: DrawingData) => {
     if (!roughCanvas) return;
-    
+
     const width = (shape.endX || shape.x) - shape.x;
     const height = (shape.endY || shape.y) - shape.y;
-    
-    roughCanvas.rectangle(shape.x, shape.y, width, height, getRoughOptions(shape.color, shape.size));
+
+    roughCanvas.rectangle(
+      shape.x,
+      shape.y,
+      width,
+      height,
+      getRoughOptions(shape.color, shape.size)
+    );
   };
 
   const drawRoughCircle = (shape: DrawingData) => {
     if (!roughCanvas) return;
-    
+
     const radius = Math.sqrt(
       Math.pow((shape.endX || shape.x) - shape.x, 2) +
-      Math.pow((shape.endY || shape.y) - shape.y, 2)
+        Math.pow((shape.endY || shape.y) - shape.y, 2)
     );
-    
-    roughCanvas.circle(shape.x, shape.y, radius * 2, getRoughOptions(shape.color, shape.size));
+
+    roughCanvas.circle(
+      shape.x,
+      shape.y,
+      radius * 2,
+      getRoughOptions(shape.color, shape.size)
+    );
   };
 
   const drawRoughArrow = (shape: DrawingData) => {
     if (!roughCanvas) return;
-    
+
     // Draw main line with rough.js
     roughCanvas.line(
-      shape.x, 
-      shape.y, 
-      shape.endX || shape.x, 
+      shape.x,
+      shape.y,
+      shape.endX || shape.x,
       shape.endY || shape.y,
       getRoughOptions(shape.color, shape.size)
     );
-    
+
     // Draw arrowhead using utility function
     drawRoughArrowhead(
       roughCanvas,
@@ -72,8 +83,8 @@ export const useRoughCanvas = (
 
   const drawRoughPen = (shape: DrawingData) => {
     if (!ctxRef.current) return;
-    
-    // For pen strokes, we still use regular canvas as rough.js 
+
+    // For pen strokes, we still use regular canvas as rough.js
     // doesn't handle continuous drawing well
     ctxRef.current.strokeStyle = shape.color;
     ctxRef.current.lineWidth = shape.size;

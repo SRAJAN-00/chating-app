@@ -51,6 +51,9 @@ export default function Collabrative({ roomId }: { roomId: string }) {
     ws.onopen = () => {
       const joinMessage = { type: "join_room", roomId };
       ws.send(JSON.stringify(joinMessage));
+
+      console.log("🔗 WebSocket connected!");
+      console.log("🚪 Joining room:", joinMessage);
     };
 
     ws.onmessage = (event) => {
@@ -87,7 +90,7 @@ export default function Collabrative({ roomId }: { roomId: string }) {
     };
 
     ws.onerror = (error) => {
-      console.error("❌ WebSocket error:", error);
+      console.log("❌ WebSocket error:", error);
     };
 
     ws.onclose = (event) => {
@@ -95,7 +98,7 @@ export default function Collabrative({ roomId }: { roomId: string }) {
     };
 
     return () => ws.close();
-  }, [roomId, historyIndex]); // ✅ FIXED: Added historyIndex dependency
+  }, [roomId]); // ✅ FIXED: Added historyIndex dependency
 
   const handleDraw = (newStroke: any) => {
     const newStrokes = [...stroke, newStroke];

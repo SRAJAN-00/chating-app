@@ -50,23 +50,34 @@ wss.on("connection", async function connection(ws, request) {
   );
 
   if (!token) {
-    console.log("❌ No token provided");
-    ws.close();
-    return;
+    console.log("❌ No token provided, using guest user");
+    const guestUserId = `guest-${Date.now()}`;
+    users.push({
+      userId: guestUserId,
+      rooms: [],
+      ws,
+    });
+    console.log("Guest user connected: ", guestUserId);
+  } else {
+    const userId = checkUserAuth(token);
+    if (!userId) {
+      console.log("❌ Invalid token, using guest user");
+      const guestUserId = `guest-${Date.now()}`;
+      users.push({
+        userId: guestUserId,
+        rooms: [],
+        ws,
+      });
+      console.log("Guest user connected: ", guestUserId);
+    } else {
+      users.push({
+        userId,
+        rooms: [],
+        ws,
+      });
+      console.log("Authenticated user connected: ", userId);
+    }
   }
-
-  const userId = checkUserAuth(token);
-  if (!userId) {
-    console.log("❌ Invalid token, closing connection");
-    ws.close();
-    return null;
-  }
-  users.push({
-    userId,
-    rooms: [],
-    ws,
-  });
-  console.log("User connected: ", userId);
 
   // Add user to users array
 
