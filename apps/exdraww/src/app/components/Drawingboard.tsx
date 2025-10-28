@@ -45,7 +45,11 @@ export default function Drawingboard({
   const shapeSelection = useShapeSelection(stroke);
   const shapeResize = useShapeResize(stroke);
   const { canvasRef: canvsRef, ctxRef } = useCanvas();
-  const { renderStrokes } = useRenderAllStrokes(stroke, ctxRef, canvsRef);
+  const { renderStrokes, addShape } = useRenderAllStrokes(
+    stroke,
+    ctxRef,
+    canvsRef
+  );
 
   // Initialize drawing tools hook
   const drawingTools = useDrawingTools(
@@ -54,7 +58,8 @@ export default function Drawingboard({
     renderStrokes,
     onDraw,
     color,
-    size
+    size,
+    addShape
   );
 
   // Initialize mouse event handlers
@@ -68,11 +73,27 @@ export default function Drawingboard({
     onUpdateStroke,
     onDeleteStroke
   );
+  const { viewport } = mouseHandlers; // 👈 get viewport
+
+  // Main render effect with pan/viewport
+  useEffect(() => {
+    const canvas = canvsRef.current;
+    const ctx = ctxRef.current;
+    if (!ctx || !canvas) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.translate(viewport.x, viewport.y);
+    ctx.scale(viewport.scale, viewport.scale);
+
+    // Draw all shapes (call your renderStrokes here, but pass ctx)
+    renderStrokes();
+
+    ctx.restore();
+  }, [renderStrokes, viewport]);
 
   // 🚀 Optimized rendering with useMemo to prevent unnecessary re-renders
-  useEffect(() => {
-    renderStrokes();
-  }, [renderStrokes]);
 
   // Draw resize handles when a shape is selected
   useEffect(() => {
@@ -120,7 +141,7 @@ export default function Drawingboard({
       onMouseMove={mouseHandlers.handleMouseMove}
       onMouseUp={mouseHandlers.handleMouseUp}
       onMouseLeave={mouseHandlers.handleMouseUp}
-      className="border border-gray-300 cursor-crosshair"
+      onWheel={mouseHandlers.handleWheel}
     />
   );
 }

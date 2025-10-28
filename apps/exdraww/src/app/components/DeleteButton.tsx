@@ -5,7 +5,9 @@ interface DeleteButtonProps {
 }
 
 export default function DeleteButton({ onDelete }: DeleteButtonProps) {
-  const [selectedShapeIndex, setSelectedShapeIndex] = useState<number | null>(null);
+  const [selectedShapeIndex, setSelectedShapeIndex] = useState<number | null>(
+    null
+  );
 
   // Listen for shape selection events (you'll need to implement this communication)
   useEffect(() => {
@@ -18,12 +20,18 @@ export default function DeleteButton({ onDelete }: DeleteButtonProps) {
     };
 
     // Listen for custom events from the drawing board
-    window.addEventListener('shape-selected', handleShapeSelection as EventListener);
-    window.addEventListener('shape-deselected', handleShapeDeselection);
+    window.addEventListener(
+      "shape-selected",
+      handleShapeSelection as EventListener
+    );
+    window.addEventListener("shape-deselected", handleShapeDeselection);
 
     return () => {
-      window.removeEventListener('shape-selected', handleShapeSelection as EventListener);
-      window.removeEventListener('shape-deselected', handleShapeDeselection);
+      window.removeEventListener(
+        "shape-selected",
+        handleShapeSelection as EventListener
+      );
+      window.removeEventListener("shape-deselected", handleShapeDeselection);
     };
   }, []);
 

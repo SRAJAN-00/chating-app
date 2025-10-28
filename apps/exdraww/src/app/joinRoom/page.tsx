@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { BACKEND_URL } from "../../../config";
+import Link from "next/link";
+import { hr } from "motion/react-client";
 
 export default function JoinRoom() {
   const [roomId, setRoomId] = useState("");
@@ -12,38 +14,6 @@ export default function JoinRoom() {
     if (roomId.trim()) {
       // Navigate to the collaborative drawing page with the room ID
       router.push(`/room/${roomId}`);
-    }
-  };
-
-  const handleCreateRoom = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("You must be signed in to create a room.");
-      router.push("/signin");
-      return;
-    }
-    const name =
-      prompt("Enter a name for your room:") ||
-      "room-" + Math.random().toString(36).substring(2, 10);
-    try {
-      const res = await axios.post(
-        `${BACKEND_URL}/rooms`,
-        { name },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      const data = await res.data;
-      if (res.status === 200 && data.roomId) {
-        router.push(`/room/${data.roomId}`);
-      } else {
-        alert(data.message || "Failed to create room");
-      }
-    } catch (err) {
-      alert("Error creating room");
     }
   };
 
@@ -70,12 +40,11 @@ export default function JoinRoom() {
           Join Room
         </button>
         <div className="w-full border-t border-neutral-200 my-2"></div>
-        <button
-          onClick={handleCreateRoom}
-          className="px-6 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition w-full"
-        >
-          Create New Room
-        </button>
+        <Link href="/createroom">
+          <button className="px-6 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition w-full">
+            Create New Room
+          </button>
+        </Link>
       </div>
     </div>
   );

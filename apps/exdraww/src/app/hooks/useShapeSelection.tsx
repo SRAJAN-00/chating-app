@@ -27,7 +27,7 @@ export const useShapeSelection = (stroke: DrawingData[]) => {
   const [originalShapePosition, setOriginalShapePosition] =
     useState<ShapePosition | null>(null);
 
-  const findRectangleAtPoint = (x: number, y: number): number | null => {
+  const findShapeAtPoint = (x: number, y: number): number | null => {
     // Check from end to start (top rectangle first)
     for (let i = stroke.length - 1; i >= 0; i--) {
       const shape = stroke[i];
@@ -39,6 +39,23 @@ export const useShapeSelection = (stroke: DrawingData[]) => {
         const maxY = Math.max(shape.y, shape.endY || shape.y);
 
         if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+          return i;
+        }
+      }
+      if (shape.tool === "circle") {
+        const centerX = (shape.x + (shape.endX || shape.x)) / 2;
+        const centerY = (shape.y + (shape.endY || shape.y)) / 2;
+        const radiusX = Math.abs((shape.endX || shape.x) - shape.x) / 2;
+        const radiusY = Math.abs((shape.endY || shape.y) - shape.y) / 2;
+
+        const normalizedX = x - centerX;
+        const normalizedY = y - centerY;
+
+        if (
+          (normalizedX * normalizedX) / (radiusX * radiusX) +
+            (normalizedY * normalizedY) / (radiusY * radiusY) <=
+          1
+        ) {
           return i;
         }
       }
@@ -113,7 +130,7 @@ export const useShapeSelection = (stroke: DrawingData[]) => {
     isDragging,
     dragStartPoint,
     originalShapePosition,
-    findRectangleAtPoint,
+    findShapeAtPoint,
     startDrag,
     updateDrag,
     endDrag,

@@ -9,6 +9,7 @@ import CircleIcon from "./icons/CircleIcon";
 import ArrowIcon from "./icons/ArrowIcon";
 import SelectionIcon from "./icons/SelectionIcon";
 import PenIcon from "./icons/PenIcon";
+import { useMouseHandlers } from "../hooks/useMouseHandlers";
 
 export default function Collabrative({ roomId }: { roomId: string }) {
   const [size, setSize] = useState(3);

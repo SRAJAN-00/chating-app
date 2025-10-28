@@ -1,8 +1,5 @@
 import { useState, useRef } from "react";
-import {
-  getMousePoint,
-  drawArrowhead
-} from "../utils/shapeUtils";
+import { getMousePoint, drawArrowhead } from "../utils/shapeUtils";
 
 type DrawingData = {
   x: number;
@@ -36,39 +33,40 @@ export const useDrawingTools = (
     null
   );
   const drawing = useRef(false);
+  const cxt = ctxRef.current;
 
   const handlePenStart = (point: { x: number; y: number }) => {
-    if (!ctxRef.current) return;
+    if (!cxt) return;
 
     drawing.current = true;
-    ctxRef.current.beginPath();
-    ctxRef.current.strokeStyle = color;
-    ctxRef.current.fillStyle = color;
-    ctxRef.current.lineWidth = size;
-    ctxRef.current.lineCap = "round";
-    ctxRef.current.lineJoin = "round";
-    ctxRef.current.moveTo(point.x, point.y);
+    cxt.beginPath();
+    cxt.strokeStyle = color;
+    cxt.fillStyle = color;
+    cxt.lineWidth = size;
+    cxt.lineCap = "round";
+    cxt.lineJoin = "round";
+    cxt.moveTo(point.x, point.y);
 
     // Draw a small dot for the start point
-    ctxRef.current.beginPath();
-    ctxRef.current.arc(point.x, point.y, size / 2, 0, 2 * Math.PI);
-    ctxRef.current.fill();
+    cxt.beginPath();
+    cxt.arc(point.x, point.y, size / 2, 0, 2 * Math.PI);
+    cxt.fill();
 
     // Start new path for line drawing
-    ctxRef.current.beginPath();
-    ctxRef.current.moveTo(point.x, point.y);
+    cxt.beginPath();
+    cxt.moveTo(point.x, point.y);
   };
 
   const handlePenMove = (point: { x: number; y: number }) => {
-    if (!drawing.current || !ctxRef.current) return;
+    if (!drawing.current || !cxt) return;
 
     // Draw on canvas immediately for smooth pen strokes
-    ctxRef.current.strokeStyle = color;
-    ctxRef.current.lineWidth = size;
-    ctxRef.current.lineCap = "round";
-    ctxRef.current.lineJoin = "round";
-    ctxRef.current.lineTo(point.x, point.y);
-    ctxRef.current.stroke();
+    cxt.strokeStyle = color;
+    cxt.lineWidth = size;
+    cxt.lineCap = "round";
+    cxt.lineJoin = "round";
+    cxt.lineTo(point.x, point.y);
+    cxt.stroke();
 
     // Also save the stroke data
     const strokeData: DrawingData = {
@@ -87,29 +85,30 @@ export const useDrawingTools = (
   };
 
   const handleRectangleMove = (point: { x: number; y: number }) => {
-    if (!drawing.current || !startPoint || !ctxRef.current) return;
+    if (!drawing.current || !startPoint || !cxt) return;
 
     renderStrokes();
 
     // Draw preview rectangle with dashed style
-    ctxRef.current.save();
-    ctxRef.current.strokeStyle = color;
-    ctxRef.current.lineWidth = size;
-    ctxRef.current.setLineDash([5, 5]);
-    ctxRef.current.beginPath();
-    ctxRef.current.rect(
+
+    cxt.save();
+    cxt.strokeStyle = color;
+    cxt.lineWidth = size;
+
+    cxt.beginPath();
+    cxt.rect(
       startPoint.x,
       startPoint.y,
       point.x - startPoint.x,
       point.y - startPoint.y
     );
-    ctxRef.current.stroke();
-    ctxRef.current.setLineDash([]);
-    ctxRef.current.restore();
+    cxt.stroke();
+
+    cxt.restore();
   };
 
   const handleCircleMove = (point: { x: number; y: number }) => {
-    if (!drawing.current || !startPoint || !ctxRef.current) return;
+    if (!drawing.current || !startPoint || !cxt) return;
 
     renderStrokes();
     const radius = Math.sqrt(
@@ -117,41 +116,34 @@ export const useDrawingTools = (
     );
 
     // Draw preview circle with dashed style
-    ctxRef.current.save();
-    ctxRef.current.strokeStyle = color;
-    ctxRef.current.lineWidth = size;
-    ctxRef.current.setLineDash([5, 5]);
-    ctxRef.current.beginPath();
-    ctxRef.current.arc(startPoint.x, startPoint.y, radius, 0, 2 * Math.PI);
-    ctxRef.current.stroke();
-    ctxRef.current.setLineDash([]);
-    ctxRef.current.restore();
+    cxt.save();
+    cxt.strokeStyle = color;
+    cxt.lineWidth = size;
+
+    cxt.beginPath();
+    cxt.arc(startPoint.x, startPoint.y, radius, 0, 2 * Math.PI);
+    cxt.stroke();
+
+    cxt.restore();
   };
 
   const handleArrowMove = (point: { x: number; y: number }) => {
-    if (!drawing.current || !startPoint || !ctxRef.current) return;
+    if (!drawing.current || !startPoint || !cxt) return;
 
     renderStrokes();
 
     // Draw preview arrow with dashed style
-    ctxRef.current.save();
-    ctxRef.current.strokeStyle = color;
-    ctxRef.current.lineWidth = size;
-    ctxRef.current.setLineDash([5, 5]);
-    ctxRef.current.beginPath();
-    ctxRef.current.moveTo(startPoint.x, startPoint.y);
-    ctxRef.current.lineTo(point.x, point.y);
-    ctxRef.current.stroke();
-    drawArrowhead(
-      ctxRef.current,
-      startPoint.x,
-      startPoint.y,
-      point.x,
-      point.y,
-      size * 3
-    );
-    ctxRef.current.setLineDash([]);
-    ctxRef.current.restore();
+    cxt.save();
+    cxt.strokeStyle = color;
+    cxt.lineWidth = size;
+
+    cxt.beginPath();
+    cxt.moveTo(startPoint.x, startPoint.y);
+    cxt.lineTo(point.x, point.y);
+    cxt.stroke();
+    drawArrowhead(cxt, startPoint.x, startPoint.y, point.x, point.y, size * 3);
+    cxt.setLineDash([]);
+    cxt.restore();
   };
 
   const handleShapeComplete = (
@@ -173,13 +165,13 @@ export const useDrawingTools = (
     onDraw(shapeData);
     setStartPoint(null);
     drawing.current = false;
-    ctxRef.current?.beginPath();
+    cxt?.beginPath();
   };
 
   const resetDrawing = () => {
     drawing.current = false;
-    if (ctxRef.current) {
-      ctxRef.current.beginPath();
+    if (cxt) {
+      cxt.beginPath();
     }
   };
 

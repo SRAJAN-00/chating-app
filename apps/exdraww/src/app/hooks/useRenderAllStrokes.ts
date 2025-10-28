@@ -16,8 +16,6 @@ export const useRenderAllStrokes = (
   ctxRef: React.RefObject<CanvasRenderingContext2D | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>
 ) => {
-
-
   // 🚀 Memoize the stroke array to prevent unnecessary recalculations
   const optimizedStrokes = useMemo(() => {
     return stroke.map((strokePoint, index) => ({
@@ -84,7 +82,7 @@ export const useRenderAllStrokes = (
         ctx.beginPath();
         const radius = Math.sqrt(
           Math.pow((strokePoint.endX || strokePoint.x) - strokePoint.x, 2) +
-          Math.pow((strokePoint.endY || strokePoint.y) - strokePoint.y, 2)
+            Math.pow((strokePoint.endY || strokePoint.y) - strokePoint.y, 2)
         );
         ctx.arc(strokePoint.x, strokePoint.y, radius, 0, 2 * Math.PI);
         ctx.stroke();
@@ -95,7 +93,10 @@ export const useRenderAllStrokes = (
         ctx.lineWidth = strokePoint.size;
         ctx.beginPath();
         ctx.moveTo(strokePoint.x, strokePoint.y);
-        ctx.lineTo(strokePoint.endX || strokePoint.x, strokePoint.endY || strokePoint.y);
+        ctx.lineTo(
+          strokePoint.endX || strokePoint.x,
+          strokePoint.endY || strokePoint.y
+        );
         ctx.stroke();
         // Draw arrowhead
         drawArrowhead(
@@ -187,7 +188,7 @@ export const useRenderAllStrokes = (
       ctx.beginPath();
       const radius = Math.sqrt(
         Math.pow((newShape.endX || newShape.x) - newShape.x, 2) +
-        Math.pow((newShape.endY || newShape.y) - newShape.y, 2)
+          Math.pow((newShape.endY || newShape.y) - newShape.y, 2)
       );
       ctx.arc(newShape.x, newShape.y, radius, 0, 2 * Math.PI);
       ctx.stroke();

@@ -15,13 +15,13 @@ const users: User[] = [];
 wss.on("connection", async function connection(ws, request) {
   function checkUserAuth(token: string): string | null {
     try {
-      console.log("🔐 Verifying token...");
+     
       const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
       if (!decoded || typeof decoded.userId !== "string") {
-        console.log("❌ Invalid token payload:", decoded);
+     
         return null;
       }
-      console.log("✅ Token verified for user:", decoded.userId);
+
       return decoded.userId;
     } catch (err) {
       console.log(
@@ -44,10 +44,6 @@ wss.on("connection", async function connection(ws, request) {
   const queryParams = new URLSearchParams(url.split("?")[1]);
   const token = queryParams.get("token");
 
-  console.log(
-    "🎫 Received token:",
-    token ? `${token.slice(0, 10)}...${token.slice(-10)}` : "null"
-  );
 
   if (!token) {
     console.log("❌ No token provided, using guest user");

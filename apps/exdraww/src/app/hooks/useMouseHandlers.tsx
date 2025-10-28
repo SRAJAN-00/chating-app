@@ -1,4 +1,6 @@
+import { useState, useRef } from "react";
 import { getMousePoint } from "../utils/shapeUtils";
+import { scale } from "motion";
 
 type DrawingData = {
   x: number;
@@ -10,7 +12,7 @@ type DrawingData = {
   tool?: string;
 };
 
-type Tool = "pen" | "rectangle" | "circle" | "arrow" | "select";
+type Tool = "pen" | "rectangle" | "circle" | "arrow" | "select" | "text";
 
 export const useMouseHandlers = (
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
@@ -20,22 +22,39 @@ export const useMouseHandlers = (
   drawingTools: any,
   stroke: DrawingData[],
   onUpdateStroke?: (index: number, updatedStroke: DrawingData) => void,
-  onDeleteStroke?: (index: number) => void
+  onDeleteStroke?: (index: number) => void,
+  onTextToolClick?: (x: number, y: number) => void
 ) => {
+  const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
+  const [isPanning, setIsPanning] = useState(false); // Placeholder for panning state
+  const prevPosition = useRef({ x: 0, y: 0 });
+
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.ctrlKey) {
+      // Start panning
+      setIsPanning(true);
+      prevPosition.current.x = e.clientX;
+      prevPosition.current.y = e.clientY;
+      return;
+    }
     const point = getMousePoint(e, canvasRef.current);
     if (!point) return;
 
     // ✅ Optional: Add right-click delete
     if (e.button === 2 && selectedTool === "select") {
       // Right click
-      const shapeIndex = shapeSelection.findRectangleAtPoint(point.x, point.y);
+      const shapeIndex = shapeSelection.findShapeAtPoint(point.x, point.y);
       if (shapeIndex !== null && onDeleteStroke) {
         onDeleteStroke(shapeIndex);
         return;
       }
     }
 
+    if (selectedTool === "text" && onTextToolClick && e.altKey) {
+      // Show text input overlay at click position
+      onTextToolClick(point.x, point.y);
+      return;
+    }
     if (selectedTool === "select") {
       // Handle selection logic
       if (shapeSelection.selectedShapeIndex !== null) {
@@ -57,7 +76,7 @@ export const useMouseHandlers = (
         }
       }
 
-      const shapeIndex = shapeSelection.findRectangleAtPoint(point.x, point.y);
+      const shapeIndex = shapeSelection.findShapeAtPoint(point.x, point.y);
       if (shapeIndex !== null) {
         shapeSelection.startDrag(shapeIndex, point);
       } else {
@@ -71,6 +90,18 @@ export const useMouseHandlers = (
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const deltaX = e.clientX - prevPosition.current.x;
+      const deltaY = e.clientY - prevPosition.current.y;
+      setViewport((prev) => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY,
+        scale: prev.scale,
+      }));
+      prevPosition.current.x = e.clientX;
+      prevPosition.current.y = e.clientY;
+      return;
+    }
     const point = getMousePoint(e, canvasRef.current);
     if (!point) return;
 
@@ -89,8 +120,15 @@ export const useMouseHandlers = (
       shapeSelection.updateDrag(
         point,
         ({ newX, newY, newEndX, newEndY }: any) => {
-          // Real-time drag visualization logic would go here
-          // This could be extracted to another hook as well
+          if (shapeSelection.selectedShapeIndex !== null) {
+            shapeSelection.setPreviewShape({
+              ...stroke[shapeSelection.selectedShapeIndex],
+              x: newX,
+              y: newY,
+              endX: newEndX,
+              endY: newEndY,
+            });
+          }
         }
       );
       return;
@@ -101,6 +139,8 @@ export const useMouseHandlers = (
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
+    setIsPanning(false);
+
     const point = getMousePoint(e, canvasRef.current);
     if (!point) return;
 
@@ -149,9 +189,31 @@ export const useMouseHandlers = (
     drawingTools.handleMouseUp(point, selectedTool);
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const scaleFactor = 1.1;
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+
+    setViewport((prev) => {
+      const oldScale = prev.scale;
+      const newScale =
+        e.deltaY < 0 ? oldScale * scaleFactor : oldScale / scaleFactor;
+
+      const clampedScale = Math.min(Math.max(newScale, 0.2), 5);
+
+      const newX = mouseX - (mouseX - prev.x) * (clampedScale / oldScale);
+      const newY = mouseY - (mouseY - prev.y) * (clampedScale / oldScale);
+
+      return { x: newX, y: newY, scale: clampedScale };
+    });
+  };
+
   return {
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
+    handleWheel,
+    viewport,
   };
 };
