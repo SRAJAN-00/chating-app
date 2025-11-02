@@ -142,13 +142,24 @@ export const isPointInShape = (
 
 export const getMousePoint = (
   e: React.MouseEvent,
-  canvas: HTMLCanvasElement | null
+  canvas: HTMLCanvasElement | null,
+  viewport?: { x: number; y: number; scale: number }
 ): { x: number; y: number } | null => {
   if (!canvas) return null;
 
   const rect = canvas.getBoundingClientRect();
-  return {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top,
-  };
+  const rawX = e.clientX - rect.left;
+  const rawY = e.clientY - rect.top;
+
+  // Convert screen coordinates to canvas coordinates when viewport is provided
+  if (viewport) {
+    // Reverse the canvas transforms: first scale, then translate
+    const canvasX = (rawX - viewport.x) / viewport.scale;
+    const canvasY = (rawY - viewport.y) / viewport.scale;
+
+    return { x: canvasX, y: canvasY };
+  }
+
+  // Return raw coordinates when no viewport transform
+  return { x: rawX, y: rawY };
 };

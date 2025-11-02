@@ -37,7 +37,7 @@ export const useMouseHandlers = (
       prevPosition.current.y = e.clientY;
       return;
     }
-    const point = getMousePoint(e, canvasRef.current);
+    const point = getMousePoint(e, canvasRef.current, viewport);
     if (!point) return;
 
     // ✅ Optional: Add right-click delete
@@ -102,7 +102,7 @@ export const useMouseHandlers = (
       prevPosition.current.y = e.clientY;
       return;
     }
-    const point = getMousePoint(e, canvasRef.current);
+    const point = getMousePoint(e, canvasRef.current, viewport);
     if (!point) return;
 
     // Handle resizing
@@ -141,7 +141,7 @@ export const useMouseHandlers = (
   const handleMouseUp = (e: React.MouseEvent) => {
     setIsPanning(false);
 
-    const point = getMousePoint(e, canvasRef.current);
+    const point = getMousePoint(e, canvasRef.current, viewport);
     if (!point) return;
 
     // Handle resize completion

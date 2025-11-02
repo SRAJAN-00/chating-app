@@ -75,7 +75,7 @@ export default function Drawingboard({
   );
   const { viewport } = mouseHandlers; // 👈 get viewport
 
-  // Main render effect with pan/viewport
+  // Main render effect with pan/viewport transforms transforms transforms
   useEffect(() => {
     const canvas = canvsRef.current;
     const ctx = ctxRef.current;
@@ -87,27 +87,28 @@ export default function Drawingboard({
     ctx.translate(viewport.x, viewport.y);
     ctx.scale(viewport.scale, viewport.scale);
 
-    // Draw all shapes (call your renderStrokes here, but pass ctx)
-    renderStrokes();
+    // Draw all shapes with viewport transforms applied
+    // pass current previewShape (if any) so previews are drawn on top
+    renderStrokes(drawingTools.previewShape);
 
-    ctx.restore();
-  }, [renderStrokes, viewport]);
-
-  // 🚀 Optimized rendering with useMemo to prevent unnecessary re-renders
-
-  // Draw resize handles when a shape is selected
-  useEffect(() => {
+    // Draw resize handles WITHIN the transformed context
     if (
       shapeSelection.selectedShapeIndex !== null &&
-      ctxRef.current &&
       selectedTool === "select"
     ) {
       const selectedShape = stroke[shapeSelection.selectedShapeIndex];
       if (selectedShape) {
-        shapeResize.drawResizeHandles(ctxRef.current, selectedShape);
+        shapeResize.drawResizeHandles(ctx, selectedShape);
       }
     }
-  }, [shapeSelection.selectedShapeIndex, stroke, selectedTool]);
+
+    ctx.restore();
+  }, [renderStrokes, viewport, drawingTools.previewShape, shapeSelection.selectedShapeIndex, selectedTool, stroke]);
+
+  // 🚀 Optimized rendering with useMemo to prevent unnecessary re-renders
+
+  // Draw resize handles when a shape is selected (moved into main render effect)
+  // Now handled inside the main render effect with viewport transforms
   // Add this useEffect to handle Delete key
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {

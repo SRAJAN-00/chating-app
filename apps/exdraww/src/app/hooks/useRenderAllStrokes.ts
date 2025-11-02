@@ -14,7 +14,8 @@ type DrawingData = {
 export const useRenderAllStrokes = (
   stroke: DrawingData[],
   ctxRef: React.RefObject<CanvasRenderingContext2D | null>,
-  canvasRef: React.RefObject<HTMLCanvasElement | null>
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  previewShape?: DrawingData | null
 ) => {
   // 🚀 Memoize the stroke array to prevent unnecessary recalculations
   const optimizedStrokes = useMemo(() => {
@@ -54,7 +55,7 @@ export const useRenderAllStrokes = (
   );
 
   // Render function using only Canvas 2D API
-  const renderStrokes = useCallback(() => {
+  const renderStrokes = useCallback((previewShape?: DrawingData | null) => {
     const ctx = ctxRef.current;
     const canvas = canvasRef.current;
     if (!ctx || !canvas) return;
@@ -112,6 +113,55 @@ export const useRenderAllStrokes = (
         renderPenStroke(ctx, strokePoint, index, stroke);
       }
     });
+
+    // Draw preview shape (if any) on top
+    if (previewShape && ctx) {
+      ctx.save();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = previewShape.color || "black";
+      ctx.lineWidth = previewShape.size || 2;
+
+      if (previewShape.tool === "rectangle") {
+        ctx.beginPath();
+        ctx.rect(
+          previewShape.x,
+          previewShape.y,
+          (previewShape.endX || previewShape.x) - previewShape.x,
+          (previewShape.endY || previewShape.y) - previewShape.y
+        );
+        ctx.stroke();
+      } else if (previewShape.tool === "circle") {
+        ctx.beginPath();
+        const radius = Math.sqrt(
+          Math.pow((previewShape.endX || previewShape.x) - previewShape.x, 2) +
+            Math.pow((previewShape.endY || previewShape.y) - previewShape.y, 2)
+        );
+        ctx.arc(previewShape.x, previewShape.y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else if (previewShape.tool === "arrow") {
+        ctx.beginPath();
+        ctx.moveTo(previewShape.x, previewShape.y);
+        ctx.lineTo(previewShape.endX || previewShape.x, previewShape.endY || previewShape.y);
+        ctx.stroke();
+        drawArrowhead(
+          ctx,
+          previewShape.x,
+          previewShape.y,
+          previewShape.endX || previewShape.x,
+          previewShape.endY || previewShape.y,
+          (previewShape.size || 2) * 3
+        );
+      } else if (previewShape.tool === "pen") {
+        // For pen preview we draw a single point (the last point)
+        ctx.beginPath();
+        ctx.arc(previewShape.x, previewShape.y, (previewShape.size || 2) / 2, 0, 2 * Math.PI);
+        ctx.fillStyle = previewShape.color || "black";
+        ctx.fill();
+      }
+
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
   }, [optimizedStrokes, ctxRef, canvasRef, stroke]);
 
   // 🖊️ Separate pen stroke rendering for better performance (keeps smooth drawing)

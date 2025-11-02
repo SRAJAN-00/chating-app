@@ -28,9 +28,13 @@ export const useShapeSelection = (stroke: DrawingData[]) => {
     useState<ShapePosition | null>(null);
 
   const findShapeAtPoint = (x: number, y: number): number | null => {
+    console.log(`🔍 Looking for shape at point (${x}, ${y})`);
+    console.log(`📊 Total shapes: ${stroke.length}`);
+    
     // Check from end to start (top rectangle first)
     for (let i = stroke.length - 1; i >= 0; i--) {
       const shape = stroke[i];
+      console.log(`🔎 Checking shape ${i}:`, shape);
 
       if (shape.tool === "rectangle") {
         const minX = Math.min(shape.x, shape.endX || shape.x);
@@ -39,8 +43,10 @@ export const useShapeSelection = (stroke: DrawingData[]) => {
         const maxY = Math.max(shape.y, shape.endY || shape.y);
 
         if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+          console.log(`✅ Found rectangle at index ${i}`);
           return i;
         }
+        console.log(`❌ Rectangle ${i} miss: point(${x},${y}) not in bounds(${minX}-${maxX}, ${minY}-${maxY})`);
       }
       if (shape.tool === "circle") {
         const centerX = (shape.x + (shape.endX || shape.x)) / 2;
@@ -56,10 +62,13 @@ export const useShapeSelection = (stroke: DrawingData[]) => {
             (normalizedY * normalizedY) / (radiusY * radiusY) <=
           1
         ) {
+          console.log(`✅ Found circle at index ${i}`);
           return i;
         }
+        console.log(`❌ Circle ${i} miss: point not inside ellipse`);
       }
     }
+    console.log(`❌ No shape found at point (${x}, ${y})`);
     return null;
   };
 
