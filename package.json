@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=exdraww --filter=http-backend --filter=ws-backend",
+    "dev:all": "turbo run dev --filter=exdraww --filter=http-backend --filter=ws-backend",
+    "dev:workspace": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"

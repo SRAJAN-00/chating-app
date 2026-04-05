@@ -1,16 +1,15 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
-import { BACKEND_URL } from "../../../config";
 import Link from "next/link";
-import { hr } from "motion/react-client";
+import AuthShell from "../components/AuthShell";
 
 export default function JoinRoom() {
   const [roomId, setRoomId] = useState("");
   const router = useRouter();
 
-  const handleJoinRoom = () => {
+  const handleJoinRoom = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (roomId.trim()) {
       // Navigate to the collaborative drawing page with the room ID
       router.push(`/room/${roomId}`);
@@ -18,34 +17,49 @@ export default function JoinRoom() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-neutral-100 to-blue-100">
-      <div className="flex flex-col items-center justify-center gap-6 p-8 bg-white rounded-2xl border border-neutral-300 shadow-xl max-w-sm w-full">
-        <h2 className="text-2xl font-bold text-blue-700 tracking-tight mb-2 drop-shadow">
-          Join or Create Drawing Room
-        </h2>
-        <p className="text-base text-neutral-700 text-center opacity-90 mb-2">
-          Enter a Room ID to join, or create a new collaborative drawing room.
-        </p>
-        <input
-          type="text"
-          placeholder="Room ID"
-          value={roomId}
-          onChange={(e) => setRoomId(e.target.value)}
-          className="px-4 py-2 rounded-lg border border-neutral-300 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+    <AuthShell
+      title="Join a room"
+      description="Paste a room ID someone shared with you, or start a new canvas."
+    >
+      <form onSubmit={handleJoinRoom} className="space-y-5">
+        <div className="space-y-2">
+          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Room ID
+          </label>
+          <input
+            type="text"
+            placeholder="e.g. 42"
+            value={roomId}
+            onChange={(e) => setRoomId(e.target.value)}
+            className="input-field text-center font-mono text-base tracking-wide"
+            required
+          />
+        </div>
+
         <button
-          onClick={handleJoinRoom}
-          className="px-6 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition w-full"
+          type="submit"
+          disabled={!roomId.trim()}
+          className="btn-primary"
         >
-          Join Room
+          Open canvas
         </button>
-        <div className="w-full border-t border-neutral-200 my-2"></div>
-        <Link href="/createroom">
-          <button className="px-6 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition w-full">
-            Create New Room
-          </button>
-        </Link>
+      </form>
+
+      <div className="relative my-8">
+        <div className="absolute inset-0 flex items-center" aria-hidden>
+          <div className="w-full border-t border-zinc-200/80 dark:border-zinc-700/80" />
+        </div>
+        <div className="relative flex justify-center text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+          <span className="bg-white/80 px-3 dark:bg-zinc-950/80">or</span>
+        </div>
       </div>
-    </div>
+
+      <Link
+        href="/createroom"
+        className="btn-secondary flex w-full items-center justify-center no-underline"
+      >
+        New room
+      </Link>
+    </AuthShell>
   );
 }

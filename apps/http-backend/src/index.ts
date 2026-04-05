@@ -190,7 +190,7 @@ app.put("/api/v1/stroke/:roomId/:index", async (req, res) => {
     console.log("🔄 PUT /stroke request for roomId:", roomId, "index:", index);
     console.log("📝 Update data:", strokeData);
 
-    if (!roomId || !index || !strokeData) {
+    if (!roomId || index === undefined || !strokeData) {
       return res.status(400).json({ message: "Missing required parameters" });
     }
 
@@ -252,7 +252,7 @@ app.delete("/api/v1/stroke/:roomId/:index", async (req, res) => {
       index
     );
 
-    if (!roomId || !index) {
+    if (!roomId || index === undefined) {
       return res.status(400).json({ message: "Missing required parameters" });
     }
 

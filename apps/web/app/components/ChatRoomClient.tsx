@@ -98,7 +98,7 @@ export function ChatRoomClient({
         {chats.map((m, idx) => (
           <div
             key={idx}
-            className={`px-4 py-2 rounded-lg max-w-[70%] break-words ${
+            className={`px-4 py-2 rounded-lg max-w-[70%] break-words whitespace-pre-wrap ${
               m.sender === currentUserId
                 ? "self-end bg-blue-500 text-white shadow-inner shadow-black/20"
                 : "self-start bg-gray-200 text-gray-900 shadow-md"

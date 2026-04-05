@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { getMousePoint, drawArrowhead } from "../utils/shapeUtils";
 
 type DrawingData = {
   x: number;
@@ -18,19 +17,10 @@ export const useDrawingTools = (
   onDraw: (stroke: DrawingData) => void,
   color: string,
   size: number,
-  addShape: (newShape: {
-    x: number;
-    y: number;
-    color: string;
-    size: number;
-    endX?: number;
-    endY?: number;
-    tool?: string;
-  }) => void
 ) => {
   // Preview state for shapes while drawing
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(
-    null
+    null,
   );
   const [previewShape, setPreviewShape] = useState<DrawingData | null>(null);
   const drawing = useRef(false);
@@ -69,7 +59,7 @@ export const useDrawingTools = (
     onDraw(strokeData);
   };
 
-  const handleShapeStart = (point: { x: number; y: number }, tool: string) => {
+  const handleShapeStart = (point: { x: number; y: number }, _tool: string) => {
     drawing.current = true;
     setStartPoint({ x: point.x, y: point.y });
   };
@@ -121,7 +111,7 @@ export const useDrawingTools = (
 
   const handleShapeComplete = (
     point: { x: number; y: number },
-    tool: string
+    tool: string,
   ) => {
     if (!startPoint) return;
 
@@ -151,7 +141,7 @@ export const useDrawingTools = (
 
   const handleMouseDown = (
     point: { x: number; y: number },
-    selectedTool: string
+    selectedTool: string,
   ) => {
     if (selectedTool === "pen") {
       handlePenStart(point);
@@ -166,7 +156,7 @@ export const useDrawingTools = (
 
   const handleMouseMove = (
     point: { x: number; y: number },
-    selectedTool: string
+    selectedTool: string,
   ) => {
     if (selectedTool === "pen") {
       handlePenMove(point);
@@ -181,7 +171,7 @@ export const useDrawingTools = (
 
   const handleMouseUp = (
     point: { x: number; y: number },
-    selectedTool: string
+    selectedTool: string,
   ) => {
     if (!drawing.current) return;
 

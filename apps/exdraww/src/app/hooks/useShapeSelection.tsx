@@ -28,13 +28,9 @@ export const useShapeSelection = (stroke: DrawingData[]) => {
     useState<ShapePosition | null>(null);
 
   const findShapeAtPoint = (x: number, y: number): number | null => {
-    console.log(`🔍 Looking for shape at point (${x}, ${y})`);
-    console.log(`📊 Total shapes: ${stroke.length}`);
-    
     // Check from end to start (top rectangle first)
     for (let i = stroke.length - 1; i >= 0; i--) {
       const shape = stroke[i];
-      console.log(`🔎 Checking shape ${i}:`, shape);
 
       if (shape.tool === "rectangle") {
         const minX = Math.min(shape.x, shape.endX || shape.x);
@@ -43,32 +39,40 @@ export const useShapeSelection = (stroke: DrawingData[]) => {
         const maxY = Math.max(shape.y, shape.endY || shape.y);
 
         if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-          console.log(`✅ Found rectangle at index ${i}`);
           return i;
         }
-        console.log(`❌ Rectangle ${i} miss: point(${x},${y}) not in bounds(${minX}-${maxX}, ${minY}-${maxY})`);
       }
       if (shape.tool === "circle") {
         const centerX = (shape.x + (shape.endX || shape.x)) / 2;
         const centerY = (shape.y + (shape.endY || shape.y)) / 2;
-        const radiusX = Math.abs((shape.endX || shape.x) - shape.x) / 2;
-        const radiusY = Math.abs((shape.endY || shape.y) - shape.y) / 2;
+        const radiusX = Math.max(
+          Math.abs((shape.endX || shape.x) - shape.x) / 2,
+          1,
+        );
+        const radiusY = Math.max(
+          Math.abs((shape.endY || shape.y) - shape.y) / 2,
+          1,
+        );
 
-        const normalizedX = x - centerX;
-        const normalizedY = y - centerY;
+        const nx = (x - centerX) / radiusX;
+        const ny = (y - centerY) / radiusY;
+        const normalizedDistance = Math.sqrt(nx * nx + ny * ny);
 
-        if (
-          (normalizedX * normalizedX) / (radiusX * radiusX) +
-            (normalizedY * normalizedY) / (radiusY * radiusY) <=
-          1
-        ) {
-          console.log(`✅ Found circle at index ${i}`);
+        // Tolerance ring around the ellipse boundary for easier selection.
+        const pixelTolerance = Math.max(6, shape.size || 2);
+        const normalizedTolerance = Math.max(
+          pixelTolerance / Math.max(radiusX, radiusY),
+          0.02,
+        );
+        const isOnStroke =
+          Math.abs(normalizedDistance - 1) <= normalizedTolerance;
+        const isInside = normalizedDistance < 1;
+
+        if (isOnStroke || isInside) {
           return i;
         }
-        console.log(`❌ Circle ${i} miss: point not inside ellipse`);
       }
     }
-    console.log(`❌ No shape found at point (${x}, ${y})`);
     return null;
   };
 

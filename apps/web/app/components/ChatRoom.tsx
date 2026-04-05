@@ -13,7 +13,7 @@ export async function ChatRoom({ id }: { id: string }) {
   const serverMessages = await getChats(id);
 
   // Map server messages to client format
-  const messages = serverMessages.map((msg: any) => ({
+  const messages = serverMessages.map((msg: { message: string, userId: string, [key: string]: unknown }) => ({
     message: msg.message,
     sender: msg.userId, // map userId to sender
   }));

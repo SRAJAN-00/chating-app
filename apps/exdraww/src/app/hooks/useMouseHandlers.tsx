@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { getMousePoint } from "../utils/shapeUtils";
-import { scale } from "motion";
 
 type DrawingData = {
   x: number;
@@ -17,13 +16,16 @@ type Tool = "pen" | "rectangle" | "circle" | "arrow" | "select" | "text";
 export const useMouseHandlers = (
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   selectedTool: Tool,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shapeSelection: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shapeResize: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   drawingTools: any,
   stroke: DrawingData[],
   onUpdateStroke?: (index: number, updatedStroke: DrawingData) => void,
   onDeleteStroke?: (index: number) => void,
-  onTextToolClick?: (x: number, y: number) => void
+  onTextToolClick?: (x: number, y: number) => void,
 ) => {
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false); // Placeholder for panning state
@@ -59,20 +61,19 @@ export const useMouseHandlers = (
       // Handle selection logic
       if (shapeSelection.selectedShapeIndex !== null) {
         const selectedShape = stroke[shapeSelection.selectedShapeIndex];
-        const handles = shapeResize.drawResizeHandles(
-          canvasRef.current?.getContext("2d")!,
-          selectedShape
-        );
-        const handleIndex = shapeResize.checkHandleClick(point, handles);
+        if (selectedShape) {
+          const handles = shapeResize.getResizeHandles(selectedShape);
+          const handleIndex = shapeResize.checkHandleClick(point, handles);
 
-        if (handleIndex !== -1) {
-          shapeResize.startResize(
-            handleIndex,
-            shapeSelection.selectedShapeIndex,
-            selectedShape,
-            point
-          );
-          return;
+          if (handleIndex !== -1) {
+            shapeResize.startResize(
+              handleIndex,
+              shapeSelection.selectedShapeIndex,
+              selectedShape,
+              point,
+            );
+            return;
+          }
         }
       }
 
@@ -107,11 +108,7 @@ export const useMouseHandlers = (
 
     // Handle resizing
     if (shapeResize.isResizing) {
-      shapeResize.updateResize(point, (updatedShape: DrawingData) => {
-        if (onUpdateStroke && shapeResize.resizingShapeIndex !== null) {
-          onUpdateStroke(shapeResize.resizingShapeIndex, updatedShape);
-        }
-      });
+      shapeResize.updateResize(point);
       return;
     }
 
@@ -119,17 +116,20 @@ export const useMouseHandlers = (
     if (selectedTool === "select" && shapeSelection.isDragging) {
       shapeSelection.updateDrag(
         point,
-        ({ newX, newY, newEndX, newEndY }: any) => {
-          if (shapeSelection.selectedShapeIndex !== null) {
-            shapeSelection.setPreviewShape({
-              ...stroke[shapeSelection.selectedShapeIndex],
-              x: newX,
-              y: newY,
-              endX: newEndX,
-              endY: newEndY,
-            });
-          }
-        }
+        ({
+          newX,
+          newY,
+          newEndX,
+          newEndY,
+        }: {
+          newX: number;
+          newY: number;
+          newEndX: number;
+          newEndY: number;
+        }) => {
+          // Preview is handled by updateDrag callback
+          // The actual update happens on mouseUp
+        },
       );
       return;
     }
@@ -141,14 +141,21 @@ export const useMouseHandlers = (
   const handleMouseUp = (e: React.MouseEvent) => {
     setIsPanning(false);
 
-    const point = getMousePoint(e, canvasRef.current, viewport);
-    if (!point) return;
-
-    // Handle resize completion
+    // Handle resize completion first so mouse leave/up always exits resize mode.
     if (shapeResize.isResizing) {
+      if (
+        onUpdateStroke &&
+        shapeResize.resizingShapeIndex !== null &&
+        shapeResize.lastResizedShape
+      ) {
+        onUpdateStroke(shapeResize.resizingShapeIndex, shapeResize.lastResizedShape);
+      }
       shapeResize.endResize();
       return;
     }
+
+    const point = getMousePoint(e, canvasRef.current, viewport);
+    if (!point) return;
 
     // Handle drag completion
     if (selectedTool === "select" && shapeSelection.isDragging) {

@@ -17,13 +17,18 @@ interface ShapePosition {
   endY?: number;
 }
 
+type ResizeHandle = {
+  x: number;
+  y: number;
+};
+
 export const useShapeResize = (stroke: DrawingData[]) => {
   const [isResizing, setIsResizing] = useState(false);
   const [selectedHandleIndex, setSelectedHandleIndex] = useState<number | null>(
-    null
+    null,
   );
   const [resizingShapeIndex, setResizingShapeIndex] = useState<number | null>(
-    null
+    null,
   );
   const [originalResizeShape, setOriginalResizeShape] =
     useState<ShapePosition | null>(null);
@@ -31,17 +36,42 @@ export const useShapeResize = (stroke: DrawingData[]) => {
     x: number;
     y: number;
   } | null>(null);
+  const [previewResizedShape, setPreviewResizedShape] =
+    useState<DrawingData | null>(null);
+  const [lastResizedShape, setLastResizedShape] = useState<DrawingData | null>(
+    null,
+  );
 
   const handleSize = 10;
   const clickTolerance = handleSize / 2; // 5 pixels
 
   /** ---------------------------------------------------------
-   * 🟦 Draw resize handles for rectangles and circles
+   * 🟦 Compute resize handles for rectangles and circles
    * --------------------------------------------------------- */
-  const drawResizeHandles = (
-    ctx: CanvasRenderingContext2D,
-    shape: DrawingData
-  ) => {
+  const getResizeHandles = (shape: DrawingData): ResizeHandle[] => {
+    if (shape.tool === "circle") {
+      const centerX = shape.x;
+      const centerY = shape.y;
+      const endX = shape.endX ?? shape.x;
+      const endY = shape.endY ?? shape.y;
+      const radius = Math.max(
+        Math.hypot(endX - centerX, endY - centerY),
+        10,
+      );
+      const handleRadius = radius;
+      const angles = [
+        (3 * Math.PI) / 2, // top
+        0, // right
+        Math.PI / 2, // bottom
+        Math.PI, // left
+      ];
+
+      return angles.map((angle) => ({
+        x: centerX + handleRadius * Math.cos(angle),
+        y: centerY + handleRadius * Math.sin(angle),
+      }));
+    }
+
     const minX = Math.min(shape.x, shape.endX ?? shape.x);
     const maxX = Math.max(shape.x, shape.endX ?? shape.x);
     const minY = Math.min(shape.y, shape.endY ?? shape.y);
@@ -50,58 +80,26 @@ export const useShapeResize = (stroke: DrawingData[]) => {
     const width = maxX - minX;
     const height = maxY - minY;
 
-    let handles;
-
-    // ✅ CIRCLE HANDLES (8 handles positioned OUTSIDE the circle)
-    if (shape.tool === "circle") {
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
-      const radiusX = (maxX - minX) / 2;
-      const radiusY = (maxY - minY) / 2;
-      const offset = 12; // Push handles outside the circle
-
-      // Calculate positions outside the circle/ellipse
-      const cornerOffset = offset * Math.sqrt(2) / 2; // Diagonal offset for corners
-      
-      // 8 handles: 4 corners + 4 edges positioned outside the circle
-      handles = [
-        { x: minX - cornerOffset, y: minY - cornerOffset }, // top-left corner (outside)
-        { x: maxX + cornerOffset, y: minY - cornerOffset }, // top-right corner (outside)
-        { x: minX - cornerOffset, y: maxY + cornerOffset }, // bottom-left corner (outside)
-        { x: maxX + cornerOffset, y: maxY + cornerOffset }, // bottom-right corner (outside)
-        { x: centerX, y: minY - offset }, // top-center edge (outside)
-        { x: minX - offset, y: centerY }, // left-center edge (outside)
-        { x: maxX + offset, y: centerY }, // right-center edge (outside)
-        { x: centerX, y: maxY + offset }, // bottom-center edge (outside)
-      ];
-
-      ctx.save();
-      ctx.fillStyle = "#007bff";
-      handles.forEach((h) => {
-        ctx.fillRect(
-          h.x - handleSize / 2,
-          h.y - handleSize / 2,
-          handleSize,
-          handleSize
-        );
-      });
-      ctx.restore();
-
-      return handles;
-    }
-
-    // 🟩 RECTANGLE HANDLES (8 total)
-    handles = [
-      { x: minX, y: minY }, // top-left
-      { x: maxX, y: minY }, // top-right
-      { x: minX, y: maxY }, // bottom-left
-      { x: maxX, y: maxY }, // bottom-right
-      { x: minX + width / 2, y: minY }, // top-center
-      { x: minX, y: minY + height / 2 }, // left-center
-      { x: maxX, y: minY + height / 2 }, // right-center
-      { x: minX + width / 2, y: maxY }, // bottom-center
+    return [
+      { x: minX, y: minY },
+      { x: maxX, y: minY },
+      { x: minX, y: maxY },
+      { x: maxX, y: maxY },
+      { x: minX + width / 2, y: minY },
+      { x: minX, y: minY + height / 2 },
+      { x: maxX, y: minY + height / 2 },
+      { x: minX + width / 2, y: maxY },
     ];
+  };
 
+  /** ---------------------------------------------------------
+   * 🟦 Draw resize handles for rectangles and circles
+   * --------------------------------------------------------- */
+  const drawResizeHandles = (
+    ctx: CanvasRenderingContext2D,
+    shape: DrawingData,
+  ) => {
+    const handles = getResizeHandles(shape);
     ctx.save();
     ctx.fillStyle = "#007bff";
     handles.forEach((handle) => {
@@ -109,11 +107,10 @@ export const useShapeResize = (stroke: DrawingData[]) => {
         handle.x - handleSize / 2,
         handle.y - handleSize / 2,
         handleSize,
-        handleSize
+        handleSize,
       );
     });
     ctx.restore();
-
     return handles;
   };
 
@@ -122,14 +119,14 @@ export const useShapeResize = (stroke: DrawingData[]) => {
    * --------------------------------------------------------- */
   const checkHandleClick = (
     point: { x: number; y: number },
-    handles: { x: number; y: number }[]
+    handles: { x: number; y: number }[],
   ) => {
     return handles.findIndex(
       (handle) =>
         point.x >= handle.x - clickTolerance &&
         point.x <= handle.x + clickTolerance &&
         point.y >= handle.y - clickTolerance &&
-        point.y <= handle.y + clickTolerance
+        point.y <= handle.y + clickTolerance,
     );
   };
 
@@ -140,7 +137,7 @@ export const useShapeResize = (stroke: DrawingData[]) => {
     handleIndex: number,
     shapeIndex: number,
     shape: DrawingData,
-    startPoint: { x: number; y: number }
+    startPoint: { x: number; y: number },
   ) => {
     setIsResizing(true);
     setSelectedHandleIndex(handleIndex);
@@ -157,10 +154,7 @@ export const useShapeResize = (stroke: DrawingData[]) => {
   /** ---------------------------------------------------------
    * 🟣 Update resizing (circle + rectangle)
    * --------------------------------------------------------- */
-  const updateResize = (
-    currentPoint: { x: number; y: number },
-    onUpdate: (updatedShape: DrawingData) => void
-  ) => {
+  const updateResize = (currentPoint: { x: number; y: number }) => {
     if (
       !isResizing ||
       selectedHandleIndex === null ||
@@ -173,50 +167,90 @@ export const useShapeResize = (stroke: DrawingData[]) => {
 
     // 🟩 Rectangle resizing
     if (shape.tool !== "circle") {
-      let newX = originalResizeShape.x;
-      let newY = originalResizeShape.y;
-      let newEndX = originalResizeShape.endX || originalResizeShape.x;
-      let newEndY = originalResizeShape.endY || originalResizeShape.y;
+      const startX = originalResizeShape.x;
+      const startY = originalResizeShape.y;
+      const startEndX = originalResizeShape.endX || originalResizeShape.x;
+      const startEndY = originalResizeShape.endY || originalResizeShape.y;
+      const minX = Math.min(startX, startEndX);
+      const maxX = Math.max(startX, startEndX);
+      const minY = Math.min(startY, startEndY);
+      const maxY = Math.max(startY, startEndY);
 
-      // Corner handles (0-3)
+      let finalX = minX;
+      let finalY = minY;
+      let finalEndX = maxX;
+      let finalEndY = maxY;
+
+      // Anchor-based rectangle resize: opposite side/corner stays fixed.
       if (selectedHandleIndex === 0) {
-        newX = currentPoint.x;
-        newY = currentPoint.y;
+        finalEndX = maxX;
+        finalEndY = maxY;
+        finalX = Math.min(currentPoint.x, finalEndX);
+        finalY = Math.min(currentPoint.y, finalEndY);
       } else if (selectedHandleIndex === 1) {
-        newEndX = currentPoint.x;
-        newY = currentPoint.y;
+        finalX = minX;
+        finalEndY = maxY;
+        finalEndX = Math.max(currentPoint.x, finalX);
+        finalY = Math.min(currentPoint.y, finalEndY);
       } else if (selectedHandleIndex === 2) {
-        newX = currentPoint.x;
-        newEndY = currentPoint.y;
+        finalEndX = maxX;
+        finalY = minY;
+        finalX = Math.min(currentPoint.x, finalEndX);
+        finalEndY = Math.max(currentPoint.y, finalY);
       } else if (selectedHandleIndex === 3) {
-        newEndX = currentPoint.x;
-        newEndY = currentPoint.y;
-      }
-      // Edge handles (4-7)
-      else if (selectedHandleIndex === 4) {
-        // top-center - only move Y
-        newY = currentPoint.y;
+        finalX = minX;
+        finalY = minY;
+        finalEndX = Math.max(currentPoint.x, finalX);
+        finalEndY = Math.max(currentPoint.y, finalY);
+      } else if (selectedHandleIndex === 4) {
+        // top-center
+        finalX = minX;
+        finalEndX = maxX;
+        finalEndY = maxY;
+        finalY = Math.min(currentPoint.y, finalEndY);
       } else if (selectedHandleIndex === 5) {
-        // left-center - only move X
-        newX = currentPoint.x;
+        // left-center
+        finalY = minY;
+        finalEndY = maxY;
+        finalEndX = maxX;
+        finalX = Math.min(currentPoint.x, finalEndX);
       } else if (selectedHandleIndex === 6) {
-        // right-center - only move X
-        newEndX = currentPoint.x;
+        // right-center
+        finalX = minX;
+        finalY = minY;
+        finalEndY = maxY;
+        finalEndX = Math.max(currentPoint.x, finalX);
       } else if (selectedHandleIndex === 7) {
-        // bottom-center - only move Y
-        newEndY = currentPoint.y;
+        // bottom-center
+        finalX = minX;
+        finalY = minY;
+        finalEndX = maxX;
+        finalEndY = Math.max(currentPoint.y, finalY);
       }
 
-      // Add minimum size protection
       const minSize = 20;
-      const finalX = Math.min(newX, newEndX);
-      const finalY = Math.min(newY, newEndY);
-      const finalEndX = Math.max(newX, newEndX);
-      const finalEndY = Math.max(newY, newEndY);
+      const width = finalEndX - finalX;
+      const height = finalEndY - finalY;
 
-      // Check minimum size constraints
-      if (Math.abs(finalEndX - finalX) < minSize || Math.abs(finalEndY - finalY) < minSize) {
-        return; // Don't update if too small
+      // Clamp instead of freezing when below minimum size.
+      if (width < minSize) {
+        if ([0, 2, 5].includes(selectedHandleIndex)) {
+          finalX = finalEndX - minSize;
+        } else if ([1, 3, 6].includes(selectedHandleIndex)) {
+          finalEndX = finalX + minSize;
+        } else {
+          finalEndX = finalX + minSize;
+        }
+      }
+
+      if (height < minSize) {
+        if ([0, 1, 4].includes(selectedHandleIndex)) {
+          finalY = finalEndY - minSize;
+        } else if ([2, 3, 7].includes(selectedHandleIndex)) {
+          finalEndY = finalY + minSize;
+        } else {
+          finalEndY = finalY + minSize;
+        }
       }
 
       const updatedShape = {
@@ -227,65 +261,47 @@ export const useShapeResize = (stroke: DrawingData[]) => {
         endY: finalEndY,
       };
 
-      onUpdate(updatedShape);
+      setPreviewResizedShape(updatedShape);
+      setLastResizedShape(updatedShape);
       return;
     }
 
     // 🔵 Circle resizing
-    let { x, y, endX, endY } = originalResizeShape;
-    x = x ?? 0;
-    y = y ?? 0;
-    endX = endX ?? x;
-    endY = endY ?? y;
+    const centerX = originalResizeShape.x;
+    const centerY = originalResizeShape.y;
+    const minRadius = 10;
+    let nextEndX = originalResizeShape.endX ?? centerX;
+    let nextEndY = originalResizeShape.endY ?? centerY;
 
-    const centerX = (x + endX) / 2;
-    const centerY = (y + endY) / 2;
-    const radiusX = Math.abs(endX - x) / 2;
-    const radiusY = Math.abs(endY - y) / 2;
-
-    let newRadiusX = radiusX;
-    let newRadiusY = radiusY;
-
-    // Handle all 8 circle handles like a rectangle (allows elliptical shapes)
+    // Circle-native 4 handles: top, right, bottom, left (center-anchored).
     if (selectedHandleIndex === 0) {
-      // Top-left corner
-      newRadiusX = Math.max(Math.abs(currentPoint.x - centerX), 10);
-      newRadiusY = Math.max(Math.abs(currentPoint.y - centerY), 10);
+      // top
+      nextEndX = centerX;
+      nextEndY = Math.min(currentPoint.y, centerY - minRadius);
     } else if (selectedHandleIndex === 1) {
-      // Top-right corner
-      newRadiusX = Math.max(Math.abs(currentPoint.x - centerX), 10);
-      newRadiusY = Math.max(Math.abs(currentPoint.y - centerY), 10);
+      // right
+      nextEndY = centerY;
+      nextEndX = Math.max(currentPoint.x, centerX + minRadius);
     } else if (selectedHandleIndex === 2) {
-      // Bottom-left corner
-      newRadiusX = Math.max(Math.abs(currentPoint.x - centerX), 10);
-      newRadiusY = Math.max(Math.abs(currentPoint.y - centerY), 10);
+      // bottom
+      nextEndX = centerX;
+      nextEndY = Math.max(currentPoint.y, centerY + minRadius);
     } else if (selectedHandleIndex === 3) {
-      // Bottom-right corner
-      newRadiusX = Math.max(Math.abs(currentPoint.x - centerX), 10);
-      newRadiusY = Math.max(Math.abs(currentPoint.y - centerY), 10);
-    } else if (selectedHandleIndex === 4) {
-      // Top-center edge - only resize Y
-      newRadiusY = Math.max(Math.abs(currentPoint.y - centerY), 10);
-    } else if (selectedHandleIndex === 5) {
-      // Left-center edge - only resize X
-      newRadiusX = Math.max(Math.abs(currentPoint.x - centerX), 10);
-    } else if (selectedHandleIndex === 6) {
-      // Right-center edge - only resize X
-      newRadiusX = Math.max(Math.abs(currentPoint.x - centerX), 10);
-    } else if (selectedHandleIndex === 7) {
-      // Bottom-center edge - only resize Y
-      newRadiusY = Math.max(Math.abs(currentPoint.y - centerY), 10);
+      // left
+      nextEndY = centerY;
+      nextEndX = Math.min(currentPoint.x, centerX - minRadius);
     }
 
     const updatedShape = {
       ...shape,
-      x: centerX - newRadiusX,
-      y: centerY - newRadiusY,
-      endX: centerX + newRadiusX,
-      endY: centerY + newRadiusY,
+      x: centerX,
+      y: centerY,
+      endX: nextEndX,
+      endY: nextEndY,
     };
 
-    onUpdate(updatedShape);
+    setPreviewResizedShape(updatedShape);
+    setLastResizedShape(updatedShape);
   };
 
   /** ---------------------------------------------------------
@@ -297,6 +313,8 @@ export const useShapeResize = (stroke: DrawingData[]) => {
     setResizingShapeIndex(null);
     setOriginalResizeShape(null);
     setResizeStartPoint(null);
+    setPreviewResizedShape(null);
+    setLastResizedShape(null);
   };
 
   return {
@@ -305,6 +323,9 @@ export const useShapeResize = (stroke: DrawingData[]) => {
     resizingShapeIndex,
     originalResizeShape,
     resizeStartPoint,
+    previewResizedShape,
+    lastResizedShape,
+    getResizeHandles,
     drawResizeHandles,
     checkHandleClick,
     startResize,

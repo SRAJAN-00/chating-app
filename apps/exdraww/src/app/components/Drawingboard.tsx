@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useCanvas } from "../hooks/useCanvas";
 import { useRenderAllStrokes } from "../hooks/useRenderAllStrokes";
-import {
-  drawArrowhead,
-  getShapeBounds,
-  isPointInShape,
-  getMousePoint,
-} from "../utils/shapeUtils";
+
 import { useShapeSelection } from "../hooks/useShapeSelection";
 import { useShapeResize } from "../hooks/useShapeResize";
 import { useDrawingTools } from "../hooks/useDrawingTools";
@@ -44,11 +39,29 @@ export default function Drawingboard({
   // Initialize hooks
   const shapeSelection = useShapeSelection(stroke);
   const shapeResize = useShapeResize(stroke);
+  const displayedStrokes = useMemo(() => {
+    if (
+      !shapeResize.isResizing ||
+      shapeSelection.selectedShapeIndex === null ||
+      !shapeResize.previewResizedShape
+    ) {
+      return stroke;
+    }
+
+    const next = [...stroke];
+    next[shapeSelection.selectedShapeIndex] = shapeResize.previewResizedShape;
+    return next;
+  }, [
+    stroke,
+    shapeResize.isResizing,
+    shapeResize.previewResizedShape,
+    shapeSelection.selectedShapeIndex,
+  ]);
   const { canvasRef: canvsRef, ctxRef } = useCanvas();
   const { renderStrokes, addShape } = useRenderAllStrokes(
-    stroke,
+    displayedStrokes,
     ctxRef,
-    canvsRef
+    canvsRef,
   );
 
   // Initialize drawing tools hook
@@ -59,7 +72,6 @@ export default function Drawingboard({
     onDraw,
     color,
     size,
-    addShape
   );
 
   // Initialize mouse event handlers
@@ -71,7 +83,7 @@ export default function Drawingboard({
     drawingTools,
     stroke,
     onUpdateStroke,
-    onDeleteStroke
+    onDeleteStroke,
   );
   const { viewport } = mouseHandlers; // 👈 get viewport
 
@@ -96,14 +108,25 @@ export default function Drawingboard({
       shapeSelection.selectedShapeIndex !== null &&
       selectedTool === "select"
     ) {
-      const selectedShape = stroke[shapeSelection.selectedShapeIndex];
+      const selectedShape = displayedStrokes[shapeSelection.selectedShapeIndex];
       if (selectedShape) {
         shapeResize.drawResizeHandles(ctx, selectedShape);
       }
     }
 
     ctx.restore();
-  }, [renderStrokes, viewport, drawingTools.previewShape, shapeSelection.selectedShapeIndex, selectedTool, stroke]);
+    // Refs (canvsRef, ctxRef) don't need to be in deps as they're stable
+    // stroke is accessed via closure but we only care about length changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    renderStrokes,
+    viewport,
+    drawingTools.previewShape,
+    shapeSelection.selectedShapeIndex,
+    selectedTool,
+    shapeResize,
+    displayedStrokes,
+  ]);
 
   // 🚀 Optimized rendering with useMemo to prevent unnecessary re-renders
 
@@ -112,18 +135,7 @@ export default function Drawingboard({
   // Add this useEffect to handle Delete key
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      console.log("🔑 Key pressed:", e.key);
-      console.log(
-        "🎯 Selected shape index:",
-        shapeSelection.selectedShapeIndex
-      );
-      console.log("🗑️ onDeleteStroke available:", !!onDeleteStroke);
-
       if (e.key === "Delete" && shapeSelection.selectedShapeIndex !== null) {
-        console.log(
-          "🚀 Attempting to delete shape at index:",
-          shapeSelection.selectedShapeIndex
-        );
         // Delete the selected shape
         onDeleteStroke?.(shapeSelection.selectedShapeIndex);
         // Clear selection
@@ -138,6 +150,7 @@ export default function Drawingboard({
   return (
     <canvas
       ref={canvsRef}
+      className="h-full w-full bg-[#f4f4f5] dark:bg-zinc-900"
       onMouseDown={mouseHandlers.handleMouseDown}
       onMouseMove={mouseHandlers.handleMouseMove}
       onMouseUp={mouseHandlers.handleMouseUp}

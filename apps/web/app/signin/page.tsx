@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import CustomButton from "../components/Button";
 import Button from "../components/Button";
 import { Input } from "../components/Input";
 import axios from "axios";
@@ -55,7 +54,7 @@ export default function SignIn() {
         </Button>
 
         <span className="text-sm text-neutral-500">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/signup" className="underline hover:text-white">
             Sign up
           </Link>

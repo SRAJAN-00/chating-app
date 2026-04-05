@@ -115,7 +115,7 @@ export const isPointInShape = (
 
     if (lenSq === 0) return false; // Line has no length
 
-    let param = dot / lenSq;
+    const param = dot / lenSq;
 
     let xx, yy;
     if (param < 0) {

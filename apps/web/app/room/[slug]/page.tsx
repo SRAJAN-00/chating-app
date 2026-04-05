@@ -6,7 +6,7 @@ async function getRoomId(slug: string) {
   try {
     const response = await axios.get(`${BACKEND_URL}/room/${slug}`);
     return response.data.room.id;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

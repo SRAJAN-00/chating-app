@@ -19,7 +19,7 @@ export default function UsersPage() {
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Users</h2>
       <ul>
-        {users.map((data: any) => (
+        {users.map((data: { id: string, email: string, [key: string]: unknown }) => (
           <li key={data.id} className="mb-2">
             {data.email}
           </li>

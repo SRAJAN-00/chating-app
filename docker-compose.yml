@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: drawapp-db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d drawapp-db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  exdraww:
+    build: .
+    user: "${UID:-1000}:${GID:-1000}"
+    command: pnpm --filter exdraww dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+    environment:
+      # Browser runs on the host; published ports match defaults in apps/exdraww/.env.example
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:3001/api/v1
+      - NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8080
+    depends_on:
+      - http-backend
+      - ws-backend
+
+  http-backend:
+    build: .
+    user: "${UID:-1000}:${GID:-1000}"
+    command: sh -c "pnpm --filter @repo/backend-common build && pnpm --filter @repo/common build && pnpm --filter @repo/db build && pnpm --filter @repo/db exec prisma generate && pnpm --filter http-backend dev"
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./packages/db/.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/drawapp-db
+
+  ws-backend:
+    build: .
+    user: "${UID:-1000}:${GID:-1000}"
+    command: sh -c "pnpm --filter @repo/backend-common build && pnpm --filter @repo/common build && pnpm --filter @repo/db build && pnpm --filter @repo/db exec prisma generate && pnpm --filter ws-backend dev"
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./packages/db/.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/drawapp-db
+
+volumes:
+  postgres_data:
