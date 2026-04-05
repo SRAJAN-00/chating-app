@@ -3,7 +3,14 @@ import React, { useState } from "react";
 import { motion } from "motion/react";
 
 const PulsingLine = () => {
-  const width = window.innerWidth; // 80% of viewport width
+  const [width, setWidth] = React.useState(1000);
+  React.useEffect(() => {
+    setWidth(window.innerWidth);
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const height = 80;
 
   const [isHovered, setIsHovered] = useState(false);
