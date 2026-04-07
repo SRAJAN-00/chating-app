@@ -18,3 +18,4 @@ ENV PORT=3001
 EXPOSE 3001
 
 CMD ["sh", "-c", "pnpm --filter @repo/db exec prisma migrate deploy && node apps/http-backend/dist/index.js"]
+# Trigger rebuild
