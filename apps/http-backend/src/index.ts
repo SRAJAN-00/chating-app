@@ -291,4 +291,10 @@ app.delete("/api/v1/stroke/:roomId/:index", async (req, res) => {
   }
 });
 
-app.listen(3001);
+const portRaw = process.env.PORT;
+const PORT = Number(portRaw);
+const serverPort = Number.isFinite(PORT) ? PORT : 3001;
+
+app.listen(serverPort, () => {
+  console.log(`HTTP backend listening on port ${serverPort}`);
+});

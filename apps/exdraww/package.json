@@ -12,7 +12,7 @@
     "@types/axios": "^0.14.4",
     "axios": "^1.12.2",
     "motion": "^12.23.22",
-    "next": "15.5.3",
+    "next": "15.5.14",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "roughjs": "^4.6.6"
@@ -24,7 +24,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.3",
+    "eslint-config-next": "15.5.14",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
